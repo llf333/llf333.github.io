@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 6.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"llf333.github.io","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"always","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":true},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta property="og:type" content="article">
+<meta property="og:title" content="MapReduce论文解读">
+<meta property="og:url" content="http://llf333.github.io/2022/08/27/mapreduce_analyse/index.html">
+<meta property="og:site_name" content="llf333">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="http://llf333.github.io/2022/08/27/mapreduce_analyse/structure.png">
+<meta property="og:image" content="http://llf333.github.io/2022/08/27/mapreduce_analyse/matrix.png">
+<meta property="article:published_time" content="2022-08-27T05:43:45.000Z">
+<meta property="article:modified_time" content="2022-09-06T07:01:51.011Z">
+<meta property="article:author" content="llf333">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://llf333.github.io/2022/08/27/mapreduce_analyse/structure.png">
+
+<link rel="canonical" href="http://llf333.github.io/2022/08/27/mapreduce_analyse/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'en'
+  };
+</script>
+
+  <title>MapReduce论文解读 | llf333</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">llf333</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories" rel="section"><i class="fa fa-th fa-fw"></i>Categories</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="en">
+    <link itemprop="mainEntityOfPage" href="http://llf333.github.io/2022/08/27/mapreduce_analyse/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/llf.jpg">
+      <meta itemprop="name" content="llf333">
+      <meta itemprop="description" content="Every man is the master of his own fortune.">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="llf333">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          MapReduce论文解读
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              <time title="Created: 2022-08-27 13:43:45" itemprop="dateCreated datePublished" datetime="2022-08-27T13:43:45+08:00">2022-08-27</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">Edited on</span>
+                <time title="Modified: 2022-09-06 15:01:51" itemprop="dateModified" datetime="2022-09-06T15:01:51+08:00">2022-09-06</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Distributed-Systems/" itemprop="url" rel="index"><span itemprop="name">Distributed Systems</span></a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <hr>
+<span id="more"></span>
+
+<hr>
+<h2 id="MapReduce解决了一个什么问题？"><a href="#MapReduce解决了一个什么问题？" class="headerlink" title="MapReduce解决了一个什么问题？"></a>MapReduce解决了一个什么问题？</h2><p>过去，处理大量数据的计算时，通常依赖于<strong>一台</strong>“<strong>超级电脑</strong>”，但机器计算能力仍然是有限的，这种方式无法解决无限大规模的数据。</p>
+<p>MapReduce作为一种分布式并行计算的框架，它主要从<strong>分治的角度出发</strong>，能够高容错地组织<strong>许多一般性能的机器</strong>，将大规模问题进行拆解，在并行计算后再做整合，解决了大规模运算的问题。</p>
+<p>现实生活中通常应用于一些分治问题：</p>
+<ul>
+<li>词频统计</li>
+<li>网页抓取</li>
+<li>日志处理</li>
+<li>查询请求汇总</li>
+</ul>
+<hr>
+<h2 id="MapReduce的框架"><a href="#MapReduce的框架" class="headerlink" title="MapReduce的框架"></a>MapReduce的框架</h2><h3 id="用户负责的模块"><a href="#用户负责的模块" class="headerlink" title="用户负责的模块"></a>用户负责的模块</h3><ul>
+<li><p>文件分割。</p>
+</li>
+<li><p>Map：接受一组参数（分割后的文件），产生一组<strong>中间键&#x2F;值对</strong>。</p>
+</li>
+<li><p>Reduce：接收<strong>一个中间键和该键的一组值</strong>，产生一个可能更小的值集。</p>
+</li>
+</ul>
+<p>具体6.824中，在src&#x2F;mrapps&#x2F;wc.go中：</p>
+<p>Map接受文件内容，返回一个key&#x2F;value集合(key是单词，value是1)；</p>
+<p>Reduce接收一个key和一组value(这个value是1)，返回一个总和的value(value的数量就是1的数量就是单词的个数)。</p>
+<p>在定义好Map和Reduce的功能后，<strong>worker在执行过程时就直接调用这两个接口</strong>，进行分布式计算，<strong>用户则无需关注内部实现</strong>。</p>
+<h3 id="程序流程"><a href="#程序流程" class="headerlink" title="程序流程"></a>程序流程</h3><img src="/2022/08/27/mapreduce_analyse/structure.png">
+
+<p>程序主要有两个节点：master和worker。</p>
+<p>1、<strong>用户定义</strong>：文件分割、Map、Reduce</p>
+<p>2、<strong>master分配任务</strong>给worker执行Map任务和Reduce任务</p>
+<p>3、<strong>Map</strong>读文件并计算</p>
+<p>4、Map将所有中间结果<strong>写入本地磁盘</strong></p>
+<p>5、等待所有的Map任务结束后，worker开始执行<strong>Reduce</strong>任务，<strong>远程获取</strong>对应worker本地磁盘的中间文件，<strong>排序</strong>后计算</p>
+<p>6、<strong>写入最终结果</strong></p>
+<p>7、<strong>通知用户任务完成</strong></p>
+<p><strong>中间文件的命名方式为: M_index - R_index</strong></p>
+<p>下图说明了Map，中间文件，Reduce三者的关系：同一行的文件是同一个Map节点产生的，同一列的文件归由同一个Reduce节点负责。</p>
+<p>对于一个key_value，其输出到中间文件的R_index为：<strong>R_index &#x3D; hash(key) % nReduce</strong>，主要优势有：</p>
+<ul>
+<li><p>将所有的key_value根据key大致均分，保证子任务的大小均衡。</p>
+</li>
+<li><p>同一个key的结果保证在同一列，由一个reduce统一处理得到总结果。</p>
+</li>
+</ul>
+<p>需要注意的是，<strong>中间文件需要写入磁盘</strong>，即使这个过程速度相对缓慢。至于为什么，我认为原因主要是<strong>worker主要是和master进行交互的，worker之间并没有联系</strong>。如果不写入，则需要直接将中间输出结果传输给另一个worker，这个过程涉及到了worker之间的通信，不仅增加了系统的复杂程度，同时网络传输的不确定性可能会导致中间输出结果一直无法得到保存，耽误整个任务的执行。</p>
+<img src="/2022/08/27/mapreduce_analyse/matrix.png">
+
+
+
+<h3 id="master数据结构"><a href="#master数据结构" class="headerlink" title="master数据结构"></a>master数据结构</h3><ul>
+<li>每个map task和reduce task的任务状态（空闲，进行或已完成）</li>
+<li>worker的状态（进行或者空闲）</li>
+<li>中间文件的位置信息和大小信息</li>
+</ul>
+<hr>
+<h2 id="Fault-Tolerance"><a href="#Fault-Tolerance" class="headerlink" title="Fault Tolerance"></a>Fault Tolerance</h2><h3 id="worker"><a href="#worker" class="headerlink" title="worker"></a>worker</h3><ul>
+<li><p>master通过心跳机制检查worker是否在规定时间内完成任务，心跳超时（worker宕机或者是backup task），则标记该worker节点的任务失败，并重置任务状态并分配给其他空闲worker。</p>
+</li>
+<li><p>执行Map的worker磁盘损坏，则会重置任务状态。为什么Reduce的不用，因为Reduce的输出会记录在全局的文件系统中。</p>
+</li>
+</ul>
+<h3 id="Master"><a href="#Master" class="headerlink" title="Master"></a>Master</h3><p>两种方式：</p>
+<ul>
+<li><p>通知客户端重新执行M-R任务。</p>
+</li>
+<li><p>维护一个检查点，宕机后从检查点后恢复。</p>
+</li>
+</ul>
+<h3 id="Semantics-in-the-Presence-of-Failures"><a href="#Semantics-in-the-Presence-of-Failures" class="headerlink" title="Semantics in the Presence of Failures"></a>Semantics in the Presence of Failures</h3><p>无论是Map还是Reduce，worker输出都会先将结果暂时写在一个私有的临时文件中，等到任务完成后，再重命名该临时文件。目的是防止多个任务写在同一个文件中，导致内容语义冲突。依靠 <strong>文件系统提供的原子重命名操作</strong> 来确保最终文件的系统状态仅包含执行一次任务所产生的数据。（这一点6.824Lab并未体现，论文里有说明）</p>
+<hr>
+<h2 id="Locality"><a href="#Locality" class="headerlink" title="Locality"></a>Locality</h2><p>网络带宽通常是分布式环境下稀缺的资源，由于M-R的文件是放在GFS文件系统中的，Map任务文件的读取通常发生在本地或者是就近的节点上，减少了带宽占用。</p>
+<hr>
+<h2 id="Backup-Tasks"><a href="#Backup-Tasks" class="headerlink" title="Backup Tasks"></a>Backup Tasks</h2><p>部分worker执行得很慢，master会分配其余空闲worker进行重复任务，只要其中之一完成任务，就算完成任务。</p>
+<hr>
+<h2 id="Refinements"><a href="#Refinements" class="headerlink" title="Refinements"></a>Refinements</h2><ul>
+<li><strong>自定义hash</strong>。可以按照数据想要的分类方法，自定义hash函数，得到相应的Reduce结果。例如，通常词频统计是按照单词的种类划分，其实也可以将同一个主机下文件中的单词划分到一起（hash函数对同一个主机下的单词有着相同的哈希值）。</li>
+<li><strong>中间结果有序</strong>。减轻Reduce任务负担。</li>
+<li><strong>预处理</strong>。在输出中间文件前，进行一次Reduce。比如某个单词word出现了1000次，&lt;word，1&gt;不进行预处理则在中间文件有1000行，预处理后则合并成&lt;word，1000&gt;，中间文件只有一行，不仅节省了网络带宽，也减轻了Reduce任务负担。</li>
+<li><strong>略过坏记录</strong>。数据集并不能保证完全是正确的，如果有一行记录是错误的导致map任务崩溃，不断的重试最终使得整个程序不能结束。因此必然需要跳过这一段错误的记录，如何跳过呢？每个map任务要捕获异常，通过安装信号的方式，在程序退出之前执行安装的信号函数把执行到的文件的行号offset等信息发送给主节点。 主节点在下次调度的时候 将这些offset处的记录作为黑名单列表传递给新的map任务，执行时会对此处的记录跳过执行。</li>
+<li><strong>MapReduce可以本地多进程执行，方便调试</strong>。</li>
+<li><strong>心跳中附加状态信息</strong>。方便用户查看整个任务的执行进度。</li>
+</ul>
+
+    </div>
+
+    
+    
+    
+        
+
+<div>
+<ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>Post author:  </strong>llf333
+  </li>
+  <li class="post-copyright-link">
+    <strong>Post link: </strong>
+    <a href="http://llf333.github.io/2022/08/27/mapreduce_analyse/" title="MapReduce论文解读">http://llf333.github.io/2022/08/27/mapreduce_analyse/</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>Copyright Notice:  </strong>All articles in this blog are licensed under <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="noopener" target="_blank"><i class="fab fa-fw fa-creative-commons"></i>BY-NC-SA</a> unless stating additionally. Please give credit to the original author when you use it elsewhere.
+</ul>
+</div>
+
+
+      <footer class="post-footer">
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2022/08/22/GFS/" rel="prev" title="GFS论文解读">
+      <i class="fa fa-chevron-left"></i> GFS论文解读
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2022/09/04/6.824_lab4/" rel="next" title="6.824 Lab4">
+      6.824 Lab4 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+
+
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#MapReduce%E8%A7%A3%E5%86%B3%E4%BA%86%E4%B8%80%E4%B8%AA%E4%BB%80%E4%B9%88%E9%97%AE%E9%A2%98%EF%BC%9F"><span class="nav-number">1.</span> <span class="nav-text">MapReduce解决了一个什么问题？</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#MapReduce%E7%9A%84%E6%A1%86%E6%9E%B6"><span class="nav-number">2.</span> <span class="nav-text">MapReduce的框架</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%94%A8%E6%88%B7%E8%B4%9F%E8%B4%A3%E7%9A%84%E6%A8%A1%E5%9D%97"><span class="nav-number">2.1.</span> <span class="nav-text">用户负责的模块</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%A8%8B%E5%BA%8F%E6%B5%81%E7%A8%8B"><span class="nav-number">2.2.</span> <span class="nav-text">程序流程</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#master%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84"><span class="nav-number">2.3.</span> <span class="nav-text">master数据结构</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Fault-Tolerance"><span class="nav-number">3.</span> <span class="nav-text">Fault Tolerance</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#worker"><span class="nav-number">3.1.</span> <span class="nav-text">worker</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Master"><span class="nav-number">3.2.</span> <span class="nav-text">Master</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Semantics-in-the-Presence-of-Failures"><span class="nav-number">3.3.</span> <span class="nav-text">Semantics in the Presence of Failures</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Locality"><span class="nav-number">4.</span> <span class="nav-text">Locality</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Backup-Tasks"><span class="nav-number">5.</span> <span class="nav-text">Backup Tasks</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Refinements"><span class="nav-number">6.</span> <span class="nav-text">Refinements</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="llf333"
+      src="/images/llf.jpg">
+  <p class="site-author-name" itemprop="name">llf333</p>
+  <div class="site-description" itemprop="description">Every man is the master of his own fortune.</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives">
+          <span class="site-state-item-count">5</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories">
+          
+        <span class="site-state-item-count">2</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/llf333" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;llf333" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2022</span>
+  <span class="with-love">
+    <i class="fa-light fa-watermelon-slice"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">llf333</span>
+</div>
+
+<!--
+  <div class="powered-by">Powered by <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a>
+  </div>-->
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>
