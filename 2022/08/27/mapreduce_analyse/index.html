@@ -28,7 +28,7 @@
 <meta property="og:image" content="http://llf333.github.io/2022/08/27/mapreduce_analyse/structure.png">
 <meta property="og:image" content="http://llf333.github.io/2022/08/27/mapreduce_analyse/matrix.png">
 <meta property="article:published_time" content="2022-08-27T05:43:45.000Z">
-<meta property="article:modified_time" content="2022-09-06T07:01:51.011Z">
+<meta property="article:modified_time" content="2022-09-06T07:08:00.505Z">
 <meta property="article:author" content="llf333">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:image" content="http://llf333.github.io/2022/08/27/mapreduce_analyse/structure.png">
@@ -181,7 +181,7 @@
                   <i class="far fa-calendar-check"></i>
                 </span>
                 <span class="post-meta-item-text">Edited on</span>
-                <time title="Modified: 2022-09-06 15:01:51" itemprop="dateModified" datetime="2022-09-06T15:01:51+08:00">2022-09-06</time>
+                <time title="Modified: 2022-09-06 15:08:00" itemprop="dateModified" datetime="2022-09-06T15:08:00+08:00">2022-09-06</time>
               </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
@@ -207,7 +207,6 @@
         <hr>
 <span id="more"></span>
 
-<hr>
 <h2 id="MapReduce解决了一个什么问题？"><a href="#MapReduce解决了一个什么问题？" class="headerlink" title="MapReduce解决了一个什么问题？"></a>MapReduce解决了一个什么问题？</h2><p>过去，处理大量数据的计算时，通常依赖于<strong>一台</strong>“<strong>超级电脑</strong>”，但机器计算能力仍然是有限的，这种方式无法解决无限大规模的数据。</p>
 <p>MapReduce作为一种分布式并行计算的框架，它主要从<strong>分治的角度出发</strong>，能够高容错地组织<strong>许多一般性能的机器</strong>，将大规模问题进行拆解，在并行计算后再做整合，解决了大规模运算的问题。</p>
 <p>现实生活中通常应用于一些分治问题：</p>
@@ -232,6 +231,7 @@
 <p>在定义好Map和Reduce的功能后，<strong>worker在执行过程时就直接调用这两个接口</strong>，进行分布式计算，<strong>用户则无需关注内部实现</strong>。</p>
 <h3 id="程序流程"><a href="#程序流程" class="headerlink" title="程序流程"></a>程序流程</h3><img src="/2022/08/27/mapreduce_analyse/structure.png">
 
+<blockquote>
 <p>程序主要有两个节点：master和worker。</p>
 <p>1、<strong>用户定义</strong>：文件分割、Map、Reduce</p>
 <p>2、<strong>master分配任务</strong>给worker执行Map任务和Reduce任务</p>
@@ -240,7 +240,8 @@
 <p>5、等待所有的Map任务结束后，worker开始执行<strong>Reduce</strong>任务，<strong>远程获取</strong>对应worker本地磁盘的中间文件，<strong>排序</strong>后计算</p>
 <p>6、<strong>写入最终结果</strong></p>
 <p>7、<strong>通知用户任务完成</strong></p>
-<p><strong>中间文件的命名方式为: M_index - R_index</strong></p>
+</blockquote>
+<p>中间文件的命名方式为: M_index - R_index</p>
 <p>下图说明了Map，中间文件，Reduce三者的关系：同一行的文件是同一个Map节点产生的，同一列的文件归由同一个Reduce节点负责。</p>
 <p>对于一个key_value，其输出到中间文件的R_index为：<strong>R_index &#x3D; hash(key) % nReduce</strong>，主要优势有：</p>
 <ul>
