@@ -21,19 +21,23 @@
   </script>
 
   <meta property="og:type" content="article">
-<meta property="og:title" content="大并发服务器架构和优化手段">
-<meta property="og:url" content="http://llf333.github.io/2022/08/20/High-Concurrency-Architecture/index.html">
+<meta property="og:title" content="BigTable论文解读">
+<meta property="og:url" content="http://llf333.github.io/2022/09/06/Big-Table/index.html">
 <meta property="og:site_name" content="llf333">
 <meta property="og:locale" content="en_US">
-<meta property="og:image" content="https://s2.loli.net/2021/12/19/Fyn36mfqexZCY5J.png">
-<meta property="og:image" content="http://llf333.github.io/2022/08/20/High-Concurrency-Architecture/High-Concurrency-Architecture.svg">
-<meta property="article:published_time" content="2022-08-20T14:15:19.052Z">
-<meta property="article:modified_time" content="2022-08-22T06:48:50.442Z">
+<meta property="og:image" content="http://llf333.github.io/2022/09/06/Big-Table/data_model.png">
+<meta property="og:image" content="http://llf333.github.io/2022/09/06/Big-Table/data_model2.png">
+<meta property="og:image" content="http://llf333.github.io/2022/09/06/Big-Table/sparse.png">
+<meta property="og:image" content="http://llf333.github.io/2022/09/06/Big-Table/structure.png">
+<meta property="og:image" content="http://llf333.github.io/2022/09/06/Big-Table/Tablet.png">
+<meta property="og:image" content="http://llf333.github.io/2022/09/06/Big-Table/SStable.png">
+<meta property="article:published_time" content="2022-09-06T07:10:02.000Z">
+<meta property="article:modified_time" content="2022-09-06T12:45:13.741Z">
 <meta property="article:author" content="llf333">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:image" content="https://s2.loli.net/2021/12/19/Fyn36mfqexZCY5J.png">
+<meta name="twitter:image" content="http://llf333.github.io/2022/09/06/Big-Table/data_model.png">
 
-<link rel="canonical" href="http://llf333.github.io/2022/08/20/High-Concurrency-Architecture/">
+<link rel="canonical" href="http://llf333.github.io/2022/09/06/Big-Table/">
 
 
 <script id="page-configurations">
@@ -46,7 +50,7 @@
   };
 </script>
 
-  <title>大并发服务器架构和优化手段 | llf333</title>
+  <title>BigTable论文解读 | llf333</title>
   
 
 
@@ -151,7 +155,7 @@
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="en">
-    <link itemprop="mainEntityOfPage" href="http://llf333.github.io/2022/08/20/High-Concurrency-Architecture/">
+    <link itemprop="mainEntityOfPage" href="http://llf333.github.io/2022/09/06/Big-Table/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
       <meta itemprop="image" content="/images/llf.jpg">
@@ -164,7 +168,7 @@
     </span>
       <header class="post-header">
         <h1 class="post-title" itemprop="name headline">
-          大并发服务器架构和优化手段
+          BigTable论文解读
         </h1>
 
         <div class="post-meta">
@@ -173,16 +177,10 @@
                 <i class="far fa-calendar"></i>
               </span>
               <span class="post-meta-item-text">Posted on</span>
+              
 
-              <time title="Created: 2022-08-20 22:15:19" itemprop="dateCreated datePublished" datetime="2022-08-20T22:15:19+08:00">2022-08-20</time>
+              <time title="Created: 2022-09-06 15:10:02 / Modified: 20:45:13" itemprop="dateCreated datePublished" datetime="2022-09-06T15:10:02+08:00">2022-09-06</time>
             </span>
-              <span class="post-meta-item">
-                <span class="post-meta-item-icon">
-                  <i class="far fa-calendar-check"></i>
-                </span>
-                <span class="post-meta-item-text">Edited on</span>
-                <time title="Modified: 2022-08-22 14:48:50" itemprop="dateModified" datetime="2022-08-22T14:48:50+08:00">2022-08-22</time>
-              </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
                 <i class="far fa-folder"></i>
@@ -207,36 +205,49 @@
         <hr>
 <span id="more"></span>
 
-<h2 id="1-大并发服务器架构和优化手段"><a href="#1-大并发服务器架构和优化手段" class="headerlink" title="1 大并发服务器架构和优化手段"></a>1 大并发服务器架构和优化手段</h2><p><img src="https://s2.loli.net/2021/12/19/Fyn36mfqexZCY5J.png" alt="image.png"></p>
-<img src="/2022/08/20/High-Concurrency-Architecture/High-Concurrency-Architecture.svg" width="70%">
+<h2 id="DataModel"><a href="#DataModel" class="headerlink" title="DataModel"></a>DataModel</h2><img src="/2022/09/06/Big-Table/data_model.png">
 
+<p>BigTable在逻辑上本质上是用一个<strong>超大的Map</strong>进行存储所有数据的。是一个三维的map:（key_row,key_col,key_time）-&gt; value。如下图：</p>
+<img src="/2022/09/06/Big-Table/data_model2.png">
+
+
+
+<p>因此原文对BigTable给出了如下的定义：</p>
+<blockquote>
+<p>A Bigtable is a <strong>sparse</strong>, <strong>distributed</strong>, <strong>persistent multidimensional sorted map</strong>. The map is indexed by a row key, column key, and a timestamp; each value in the map is an uninterpreted array of bytes.</p>
+</blockquote>
+<p>这里如何理解”<strong>sparse</strong>“？（参考了康巴尔的解释）</p>
+<img src="/2022/09/06/Big-Table/sparse.png">
+
+<p>左边是标准的关系型数据库的数据模型：每条记录（行）的格式通常是固定的，包含所有的信息（当然也可以有null，但逻辑上排列紧凑）</p>
+<p>右边是BigTable的数据模型：允许有些行数据没有对应的列（逻辑上排序相对稀疏）</p>
+<hr>
+<h2 id="Structure"><a href="#Structure" class="headerlink" title="Structure"></a>Structure</h2><img src="/2022/09/06/Big-Table/structure.png" width="70%">
+
+<p>总体来说，Big Table主要依赖于两个组件：GFS和Chubby。下面具体描述一下Big Table的架构是怎么样的，以及为什么要依赖这两个组件，这两个组件在整个系统中扮演了什么样的地位。</p>
+<h3 id="Structure-1"><a href="#Structure-1" class="headerlink" title="Structure"></a>Structure</h3><p>如上图所示，BigTable主要由以下部分组成</p>
 <ul>
-<li><p>客户端访问服务器,当<strong>应用服务器请求太多</strong>时,数据库处理不过来,可以采用<strong>队列服务和连接池</strong>。</p>
+<li><p>Client：通过读取chubby的tablet目录，获取元数据（METADATA）信息，直接和Tablet Server通信。</p>
 </li>
-<li><p>主要的业务逻辑可以<strong>挪至应用服务器</strong>上,数据库辅助的一些业务处理</p>
+<li><p>Master Server：Tablet分配、Tablet状态监控、负载均衡、GFS文件的垃圾回收、模式修改等。</p>
 </li>
-<li><p>使用<strong>缓存</strong>减少对数据库的访问</p>
-<p>两种方式<strong>缓存定期更新</strong>:如果缓存失效,则重新到数据库里查询,实时性差；将热点数据存至缓存,一旦数据库更新,立即更新缓存,实时性好。</p>
-<p>缓存还可能出现内存不够的问题,这时需要采用<strong>缓存换页</strong>,将不活跃数据换出内存,主要方法有FIFO,LRU,LFU。这些缓存技术都有开源的技术,比如<strong>nosql</strong>(采用key&#x2F;value),<strong>分布式缓存:redis、memcached</strong>。缓存假如部署在<strong>多个,独立</strong>的服务器(分布式缓存)上,则避免了无法多客户端访问同一个cache的局限。</p>
-</li>
-<li><p>即使有以上方法,仍有可能数据库处理不过来,其中一个原因是<strong>数据库读或者写将数据库锁住了</strong>,这时可以采用<strong>读写分离</strong>将数据库读和写部署在不同的服务器上,使数据库<strong>负载均衡</strong>。当写数据库发生变化后,则需要对读数据库进行同步更新(<strong>replication机制–raft等</strong>)。</p>
-</li>
-<li><p>数据库可能仍然过大,这时可采用<strong>数据分区</strong>的方式,分区方式有两种:<strong>垂直分区</strong>、<strong>水平分区</strong>。垂直的意思按数据的种类分区,水平数据时每一种数据都含有一点点,一般是水平分区。</p>
-</li>
-<li><p>当应用服务器忙不过来时,可部署一个<strong>任务服务器</strong>,监视应用服务器的负载情况,当新任务抵达时,选择<strong>负载最轻</strong>的应用服务器,这种情况时应用服务器<strong>被动</strong>地接受任务,可能会<strong>任务分配不公平</strong>,这时可采用应用服务器在轻负载时<strong>主动请求任务</strong>的方式。为了防止任务服务器瘫痪,还需要设置<strong>备用的任务服务器</strong>,采用<strong>HA</strong>心跳机制检测彼此状况。</p>
-</li>
-<li><p>服务器性能四大杀手:<strong>数据拷贝</strong>(缓存),<strong>环境切换</strong>(单核采用状态机编程,尽量减少线程切换,多核则需要尽量发挥多核性能),<strong>内存分配</strong>,(采用内存池),<strong>锁</strong>(尽量少用)</p>
+<li><p>Tablet Server：存储Tablet数据，每个Tablet包含了某个范围内的行的所有数据。</p>
 </li>
 </ul>
-<hr>
-<h2 id="2-大型网站架构演变过程"><a href="#2-大型网站架构演变过程" class="headerlink" title="2 大型网站架构演变过程"></a>2 大型网站架构演变过程</h2><ol>
-<li><strong>webserver和数据库分离</strong>,webserver可进一步<strong>动静分离</strong>,分为前端(静)和后端(动)</li>
-<li><strong>缓存处理</strong>:客户端(浏览器)缓存,前端页面缓存,后端的ESI页面缓存,本地数据缓存。</li>
-<li><strong>webserver集群</strong>(前后端负载均衡)+<strong>读写分离</strong>(负载均衡)</li>
-<li><strong>CDN、分布式缓存、数据库分库分表</strong></li>
-<li><strong>多数据中心</strong>(将一致性较低的数据用nosql(key-value)提高并发能力,分布式文件系统(GFS)、分布式存储和计算(Map&#x2F;Reduce)</li>
-</ol>
-<hr>
+<h3 id="Building-Blocks"><a href="#Building-Blocks" class="headerlink" title="Building Blocks"></a>Building Blocks</h3><ul>
+<li><p><strong>GFS</strong>：首先需要明确的是GFS是一个文件系统，而Big Table是一个存储系统（MapReduce是一种计算模型）。存储系统是干嘛的？通俗一点就是通过这个存储系统，我们能够根据某条数据记录获取该条数据记录的位置，并对它进行操作。<strong>BigTable就是将所有的数据存储在GFS中</strong>，<strong>而自身存储数据的位置信息</strong>，<strong>GFS为BigTable提供了数据容错和高性能</strong>。如上图所示，BIgTable中有许多Tablet Server，这个Tablet Server就是存储数据位置信息的，在文章中被定义为 “Tablet”。</p>
+</li>
+<li><p><strong>Chubby</strong>：由于没细看过Chubby的论文，这里就只能粗略地讲一下Chubby。<strong>chubby是一个高可用的、持久性的分布式锁服务，它提供一个名字空间，包含了目录和小文件。每个目录和文件可以被用作一个锁，针对文件的读和写操作都是原子的</strong>。Chubby是有5台服务器组成的，其中一台是master，使用chubby服务的客户端通过RPC与chubby的master进行通信，其他服务器只是Chubby的容错保证，使用的是Paxos算法。那BigTable用它做啥？总体来说就是需要它这个分布式锁的服务来维护BigTable的各种操作正常，以及监控一些状态。由于Chubby这个分布式锁有点老，这里就不细究了。</p>
+</li>
+</ul>
+<h3 id="Master"><a href="#Master" class="headerlink" title="Master"></a>Master</h3><p>Master是如何管理的呢？</p>
+<p>当一个Tablet服务器启动，它会在Chubby的一个指定目录下建立一个唯一的文件，并且获取该文件的独占锁。<strong>Master服务器则通过轮询Tablet服务器文件锁的状态</strong>来检测何时Tablet服务器不再为Tablet提供服务。<strong>Master服务器还会实时监控着整个服务器目录</strong>，因此Master服务器能够知道有新的Tablet服务器加入了。当Tablet服务器终止时（比如，集群的管理系统将该Tablet服务器的主机从集群中移除），它会尝试释放它持有的文件锁，这样一来，Master服务器就能尽快把Tablet分配到其它的Tablet服务器。</p>
+<h3 id="Tablet"><a href="#Tablet" class="headerlink" title="Tablet"></a>Tablet</h3><p>下面是Tablet的结构，就是一层层地往下找数据的位置（类似B+树），第一个是Chubby文件，存储了root tablet的位置信息，由于是chubby文件，也就意味着一旦chubby不可用，整个Big Table就丢失了root tablet，整个服务也就不可用了。第二个是RootTablet，它永远不会被分割，因此这个存储结构最多不会超过三层。最后一层就是Google SSTable文件，存储于GFS上。<strong>因此客户端找数据的过程，就是通过chubby先找到RootTablet的位置，然后去访问它，再通过RootTablet内的信息找到METADATA Tablet的位置，然后访问它，类似的最后找到SSTable的位置，去GFS中寻找最终数据</strong>。这个过程客户端当然也有<strong>缓存处理</strong>。</p>
+<p><strong>Tablet的持久化保证是通过WAL日志来实现的</strong>，WAL存储于GFS中，在Tablet Server重启时重放日志即可。</p>
+<img src="/2022/09/06/Big-Table/Tablet.png">
+
+<img src="/2022/09/06/Big-Table/SStable.png">
+
 
     </div>
 
@@ -252,7 +263,7 @@
   </li>
   <li class="post-copyright-link">
     <strong>Post link: </strong>
-    <a href="http://llf333.github.io/2022/08/20/High-Concurrency-Architecture/" title="大并发服务器架构和优化手段">http://llf333.github.io/2022/08/20/High-Concurrency-Architecture/</a>
+    <a href="http://llf333.github.io/2022/09/06/Big-Table/" title="BigTable论文解读">http://llf333.github.io/2022/09/06/Big-Table/</a>
   </li>
   <li class="post-copyright-license">
     <strong>Copyright Notice:  </strong>All articles in this blog are licensed under <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="noopener" target="_blank"><i class="fab fa-fw fa-creative-commons"></i>BY-NC-SA</a> unless stating additionally. Please give credit to the original author when you use it elsewhere.
@@ -268,13 +279,10 @@
         
     <div class="post-nav">
       <div class="post-nav-item">
-    <a href="/2022/08/20/%E4%BA%8C%E5%88%B7Effective-C++/" rel="prev" title="二刷Effective C++">
-      <i class="fa fa-chevron-left"></i> 二刷Effective C++
+    <a href="/2022/09/04/6.824_lab4/" rel="prev" title="6.824 Lab4">
+      <i class="fa fa-chevron-left"></i> 6.824 Lab4
     </a></div>
-      <div class="post-nav-item">
-    <a href="/2022/08/22/GFS/" rel="next" title="GFS论文解读">
-      GFS论文解读 <i class="fa fa-chevron-right"></i>
-    </a></div>
+      <div class="post-nav-item"></div>
     </div>
       </footer>
     
@@ -335,7 +343,7 @@
 
       <!--noindex-->
       <div class="post-toc-wrap sidebar-panel">
-          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#1-%E5%A4%A7%E5%B9%B6%E5%8F%91%E6%9C%8D%E5%8A%A1%E5%99%A8%E6%9E%B6%E6%9E%84%E5%92%8C%E4%BC%98%E5%8C%96%E6%89%8B%E6%AE%B5"><span class="nav-number">1.</span> <span class="nav-text">1 大并发服务器架构和优化手段</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-%E5%A4%A7%E5%9E%8B%E7%BD%91%E7%AB%99%E6%9E%B6%E6%9E%84%E6%BC%94%E5%8F%98%E8%BF%87%E7%A8%8B"><span class="nav-number">2.</span> <span class="nav-text">2 大型网站架构演变过程</span></a></li></ol></div>
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#DataModel"><span class="nav-number">1.</span> <span class="nav-text">DataModel</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Structure"><span class="nav-number">2.</span> <span class="nav-text">Structure</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#Structure-1"><span class="nav-number">2.1.</span> <span class="nav-text">Structure</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Building-Blocks"><span class="nav-number">2.2.</span> <span class="nav-text">Building Blocks</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Master"><span class="nav-number">2.3.</span> <span class="nav-text">Master</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Tablet"><span class="nav-number">2.4.</span> <span class="nav-text">Tablet</span></a></li></ol></li></ol></div>
       </div>
       <!--/noindex-->
 
