@@ -27,12 +27,11 @@
 <meta property="og:locale" content="en_US">
 <meta property="og:image" content="http://llf333.github.io/2022/09/22/cmu15-445_project2/split1.png">
 <meta property="og:image" content="http://llf333.github.io/2022/09/22/cmu15-445_project2/split2.png">
-<meta property="og:image" content="http://llf333.github.io/2022/09/22/cmu15-445_project2/Aftersplit.png">
 <meta property="og:image" content="http://llf333.github.io/2022/09/22/cmu15-445_project2/After_directory_growing.png">
 <meta property="og:image" content="http://llf333.github.io/2022/09/22/cmu15-445_project2/res.png">
 <meta property="og:image" content="http://llf333.github.io/2022/09/22/cmu15-445_project2/Rank.png">
 <meta property="article:published_time" content="2022-09-22T10:41:04.000Z">
-<meta property="article:modified_time" content="2022-09-23T07:38:16.879Z">
+<meta property="article:modified_time" content="2022-09-23T07:55:16.839Z">
 <meta property="article:author" content="llf333">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:image" content="http://llf333.github.io/2022/09/22/cmu15-445_project2/split1.png">
@@ -185,7 +184,7 @@
                   <i class="far fa-calendar-check"></i>
                 </span>
                 <span class="post-meta-item-text">Edited on</span>
-                <time title="Modified: 2022-09-23 15:38:16" itemprop="dateModified" datetime="2022-09-23T15:38:16+08:00">2022-09-23</time>
+                <time title="Modified: 2022-09-23 15:55:16" itemprop="dateModified" datetime="2022-09-23T15:55:16+08:00">2022-09-23</time>
               </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
@@ -266,11 +265,9 @@
 </li>
 </ul>
 <hr>
-<h3 id="SPLITTING-BUCKETS"><a href="#SPLITTING-BUCKETS" class="headerlink" title="SPLITTING BUCKETS"></a>SPLITTING BUCKETS</h3><p>什么时候需要桶分裂？当插入时，该桶满了，则需要增加该桶的深度，并分裂出一个桶。分裂桶最关键的有两点，<strong>一是重新分配数据</strong>，将一部分数据移至到新桶，这个根据各个数据的key重新计算映射即可；<strong>二是更改指向原桶的IDX的指向</strong>，有的仍指向旧桶，有的变为指向新桶了，例如在GlobalDepth&#x3D;5的情况下，LocalDepth&#x3D;3的00100进行桶分裂，指向原桶的有00100，01100，10100，11100，在分裂后，01100和11100应该指向新桶（一个坑，漏了这一步，只更改了分裂出的两个桶，导致一直查询错误）。下面是分裂前后的示意图（对二没有展示出）。</p>
-<img src="/2022/09/22/cmu15-445_project2/Aftersplit.png" width="50%">
-
+<h3 id="SPLITTING-BUCKETS"><a href="#SPLITTING-BUCKETS" class="headerlink" title="SPLITTING BUCKETS"></a>SPLITTING BUCKETS</h3><p>什么时候需要桶分裂？当插入时，该桶满了，则需要增加该桶的深度，并分裂出一个桶。分裂桶最关键的有两点，<strong>一是重新分配数据</strong>，将一部分数据移至到新桶，这个根据各个数据的key重新计算映射即可；<strong>二是更改指向原桶的IDX的指向</strong>，有的仍指向旧桶，有的变为指向新桶了，例如在GlobalDepth&#x3D;5的情况下，LocalDepth&#x3D;3的00100进行桶分裂，指向原桶的有00100，01100，10100，11100，在分裂后，01100和11100应该指向新桶（一个坑，漏了这一步，只更改了分裂出的两个桶，导致一直查询错误）。</p>
 <hr>
-<h3 id="DIRECTORY-GROWING"><a href="#DIRECTORY-GROWING" class="headerlink" title="DIRECTORY GROWING"></a>DIRECTORY GROWING</h3><p>什么时候需要目录扩展？当桶分裂时，分裂前的深度和全局深度相同，则需要扩展目录。扩展目录最关键的就是，<strong>重新建立各个<code>IDX</code>与page_id的映射以及各个<code>IDX</code>的局部深度</strong>。从上面那个手稿图可以看出，由于扩展了目录，新增添的部分<code>IDX</code>的<code>depth</code>和<code>pid</code>都没有得到定义。重新建立映射关系的思路是：<strong>遍历原<code>IDX</code>中除了bk1的所有<code>IDX</code><strong>，</strong>让其更高深度的所有兄弟的pid和depth都与其相等</strong>（核心原因是更高深度的位没起到作用）。</p>
+<h3 id="DIRECTORY-GROWING"><a href="#DIRECTORY-GROWING" class="headerlink" title="DIRECTORY GROWING"></a>DIRECTORY GROWING</h3><p>什么时候需要目录扩展？当桶分裂时，分裂前的深度和全局深度相同，则需要扩展目录。扩展目录最关键的就是，<strong>重新建立各个<code>IDX</code>与page_id的映射以及各个<code>IDX</code>的局部深度</strong>。从下面那个手稿图可以看出，由于扩展了目录，新增添的部分<code>IDX</code>的<code>depth</code>和<code>pid</code>都没有得到定义。重新建立映射关系的思路是：<strong>遍历原<code>IDX</code>中除了bk1的所有<code>IDX</code><strong>，</strong>让其更高深度的所有兄弟的pid和depth都与其相等</strong>（核心原因是更高深度的位没起到作用）。</p>
 <img src="/2022/09/22/cmu15-445_project2/After_directory_growing.png" width="50%">
 
 <hr>
