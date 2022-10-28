@@ -22,18 +22,18 @@
 
   <meta property="og:type" content="article">
 <meta property="og:title" content="leveldb基本组件源码阅读">
-<meta property="og:url" content="http://llf333.github.io/2022/10/26/leveldb_basic-tools/index.html">
+<meta property="og:url" content="http://llf333.github.io/2022/10/26/leveldb_Basic-Tools/index.html">
 <meta property="og:site_name" content="llf333">
 <meta property="og:locale" content="en_US">
-<meta property="og:image" content="http://llf333.github.io/2022/10/26/leveldb_basic-tools/skiplist.png">
-<meta property="og:image" content="http://llf333.github.io/2022/10/26/leveldb_basic-tools/status.png">
+<meta property="og:image" content="http://llf333.github.io/2022/10/26/leveldb_Basic-Tools/skiplist.png">
+<meta property="og:image" content="http://llf333.github.io/2022/10/26/leveldb_Basic-Tools/status.png">
 <meta property="article:published_time" content="2022-10-26T13:36:49.000Z">
-<meta property="article:modified_time" content="2022-10-27T12:39:31.835Z">
+<meta property="article:modified_time" content="2022-10-28T13:18:38.416Z">
 <meta property="article:author" content="llf333">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:image" content="http://llf333.github.io/2022/10/26/leveldb_basic-tools/skiplist.png">
+<meta name="twitter:image" content="http://llf333.github.io/2022/10/26/leveldb_Basic-Tools/skiplist.png">
 
-<link rel="canonical" href="http://llf333.github.io/2022/10/26/leveldb_basic-tools/">
+<link rel="canonical" href="http://llf333.github.io/2022/10/26/leveldb_Basic-Tools/">
 
 
 <script id="page-configurations">
@@ -151,7 +151,7 @@
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="en">
-    <link itemprop="mainEntityOfPage" href="http://llf333.github.io/2022/10/26/leveldb_basic-tools/">
+    <link itemprop="mainEntityOfPage" href="http://llf333.github.io/2022/10/26/leveldb_Basic-Tools/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
       <meta itemprop="image" content="/images/llf.jpg">
@@ -181,7 +181,7 @@
                   <i class="far fa-calendar-check"></i>
                 </span>
                 <span class="post-meta-item-text">Edited on</span>
-                <time title="Modified: 2022-10-27 20:39:31" itemprop="dateModified" datetime="2022-10-27T20:39:31+08:00">2022-10-27</time>
+                <time title="Modified: 2022-10-28 21:18:38" itemprop="dateModified" datetime="2022-10-28T21:18:38+08:00">2022-10-28</time>
               </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
@@ -233,7 +233,7 @@
 <h3 id="SkipList"><a href="#SkipList" class="headerlink" title="SkipList"></a>SkipList</h3><h4 id="Data-Structure"><a href="#Data-Structure" class="headerlink" title="Data Structure"></a>Data Structure</h4><p>SkipList本质是一个多层<strong>有序</strong>链表，在普通链表的基础上增加了多级索引，实现节点的快速跳跃，结构简单，且查询速度较快。</p>
 <p>查找某个元素时，从图中的左上角开始，逐渐向右下方移动，无须遍历整个链表就可定位到目标元素的位置。</p>
 <p>时间复杂度分析：查找、插入、删除都是<code>O(logn)</code>，假设元素个数为n，每两个结点提取一个结点建立索引，那么每往下一层走相当于节点数目减少一半，走到最底层就逼近答案，粗暴的理解，查询时每次减少一半的元素的时间复杂度都是O(log n)，比如二叉树的查找、二分法查找、归并排序、快速排序。</p>
-<img src="/2022/10/26/leveldb_basic-tools/skiplist.png">
+<img src="/2022/10/26/leveldb_Basic-Tools/skiplist.png">
 
 <p>下面是leveldb中跳表源码的大致框架，对外开放的接口主要有Insert和Contain。</p>
 <ul>
@@ -288,7 +288,7 @@
 
 <hr>
 <h3 id="Status"><a href="#Status" class="headerlink" title="Status"></a>Status</h3><p>用于记录leveldb中状态信息，保存错误码和对应的字符串错误信息。</p>
-<img src="/2022/10/26/leveldb_basic-tools/status.png">
+<img src="/2022/10/26/leveldb_Basic-Tools/status.png">
 
 <figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line"> <span class="keyword">private</span>:</span><br><span class="line">  <span class="keyword">enum</span> <span class="title class_">Code</span> &#123;</span><br><span class="line">    kOk = <span class="number">0</span>,</span><br><span class="line">    kNotFound = <span class="number">1</span>,</span><br><span class="line">    kCorruption = <span class="number">2</span>,</span><br><span class="line">    kNotSupported = <span class="number">3</span>,</span><br><span class="line">    kInvalidArgument = <span class="number">4</span>,</span><br><span class="line">    kIOError = <span class="number">5</span></span><br><span class="line">  &#125;;</span><br><span class="line"></span><br><span class="line">Status::<span class="built_in">Status</span>(Code code, <span class="type">const</span> Slice&amp; msg, <span class="type">const</span> Slice&amp; msg2) &#123;</span><br><span class="line">  <span class="built_in">assert</span>(code != kOk);</span><br><span class="line">  <span class="type">const</span> <span class="type">uint32_t</span> len1 = <span class="built_in">static_cast</span>&lt;<span class="type">uint32_t</span>&gt;(msg.<span class="built_in">size</span>());</span><br><span class="line">  <span class="type">const</span> <span class="type">uint32_t</span> len2 = <span class="built_in">static_cast</span>&lt;<span class="type">uint32_t</span>&gt;(msg2.<span class="built_in">size</span>());</span><br><span class="line">  <span class="type">const</span> <span class="type">uint32_t</span> size = len1 + (len2 ? (<span class="number">2</span> + len2) : <span class="number">0</span>);</span><br><span class="line">  <span class="type">char</span>* result = <span class="keyword">new</span> <span class="type">char</span>[size + <span class="number">5</span>];</span><br><span class="line">  std::<span class="built_in">memcpy</span>(result, &amp;size, <span class="built_in">sizeof</span>(size));</span><br><span class="line">  result[<span class="number">4</span>] = <span class="built_in">static_cast</span>&lt;<span class="type">char</span>&gt;(code);</span><br><span class="line">  std::<span class="built_in">memcpy</span>(result + <span class="number">5</span>, msg.<span class="built_in">data</span>(), len);</span><br><span class="line">  <span class="keyword">if</span> (len2) &#123;</span><br><span class="line">    result[<span class="number">5</span> + len1] = <span class="string">&#x27;:&#x27;</span>;</span><br><span class="line">    result[<span class="number">6</span> + len1] = <span class="string">&#x27; &#x27;</span>;</span><br><span class="line">    std::<span class="built_in">memcpy</span>(result + <span class="number">7</span> + len1, msg2.<span class="built_in">data</span>(), len2);</span><br><span class="line">  &#125;</span><br><span class="line">  state_ = result;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 
@@ -307,7 +307,7 @@
   </li>
   <li class="post-copyright-link">
     <strong>Post link: </strong>
-    <a href="http://llf333.github.io/2022/10/26/leveldb_basic-tools/" title="leveldb基本组件源码阅读">http://llf333.github.io/2022/10/26/leveldb_basic-tools/</a>
+    <a href="http://llf333.github.io/2022/10/26/leveldb_Basic-Tools/" title="leveldb基本组件源码阅读">http://llf333.github.io/2022/10/26/leveldb_Basic-Tools/</a>
   </li>
   <li class="post-copyright-license">
     <strong>Copyright Notice:  </strong>All articles in this blog are licensed under <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="noopener" target="_blank"><i class="fab fa-fw fa-creative-commons"></i>BY-NC-SA</a> unless stating additionally. Please give credit to the original author when you use it elsewhere.
@@ -326,7 +326,10 @@
     <a href="/2022/10/25/cmu15-445_project4/" rel="prev" title="cmu15-445/645 2021 Project4">
       <i class="fa fa-chevron-left"></i> cmu15-445/645 2021 Project4
     </a></div>
-      <div class="post-nav-item"></div>
+      <div class="post-nav-item">
+    <a href="/2022/10/28/leveldb_WriteAndRead/" rel="next" title="leveldb源码阅读----读写流程">
+      leveldb源码阅读----读写流程 <i class="fa fa-chevron-right"></i>
+    </a></div>
     </div>
       </footer>
     
@@ -402,7 +405,7 @@
   <nav class="site-state">
       <div class="site-state-item site-state-posts">
           <a href="/archives">
-          <span class="site-state-item-count">12</span>
+          <span class="site-state-item-count">13</span>
           <span class="site-state-item-name">posts</span>
         </a>
       </div>
