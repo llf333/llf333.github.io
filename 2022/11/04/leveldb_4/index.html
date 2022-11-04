@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 6.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"llf333.github.io","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"always","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":true},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta property="og:type" content="article">
+<meta property="og:title" content="leveldb源码阅读----WAL和Compaction">
+<meta property="og:url" content="http://llf333.github.io/2022/11/04/leveldb_4/index.html">
+<meta property="og:site_name" content="llf333">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="http://llf333.github.io/2022/11/04/leveldb_4/WAL.png">
+<meta property="article:published_time" content="2022-11-04T09:07:47.000Z">
+<meta property="article:modified_time" content="2022-11-04T11:54:24.617Z">
+<meta property="article:author" content="llf333">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://llf333.github.io/2022/11/04/leveldb_4/WAL.png">
+
+<link rel="canonical" href="http://llf333.github.io/2022/11/04/leveldb_4/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'en'
+  };
+</script>
+
+  <title>leveldb源码阅读----WAL和Compaction | llf333</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">llf333</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories" rel="section"><i class="fa fa-th fa-fw"></i>Categories</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="en">
+    <link itemprop="mainEntityOfPage" href="http://llf333.github.io/2022/11/04/leveldb_4/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/llf.jpg">
+      <meta itemprop="name" content="llf333">
+      <meta itemprop="description" content="Every man is the master of his own fortune.">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="llf333">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          leveldb源码阅读----WAL和Compaction
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+              
+
+              <time title="Created: 2022-11-04 17:07:47 / Modified: 19:54:24" itemprop="dateCreated datePublished" datetime="2022-11-04T17:07:47+08:00">2022-11-04</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/C/" itemprop="url" rel="index"><span itemprop="name">C++</span></a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Database/" itemprop="url" rel="index"><span itemprop="name">Database</span></a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <hr>
+<span id="more"></span>
+
+<h1 id="leveldb源码阅读4——WAL和Compaction"><a href="#leveldb源码阅读4——WAL和Compaction" class="headerlink" title="leveldb源码阅读4——WAL和Compaction"></a>leveldb源码阅读4——WAL和Compaction</h1><p>前面已经把leveldb的读流程已经说得非常清楚了，接下来我便想从写流程来阅读leveldb的源码，这其中会涉及到，WAL的使用，文件的合并等。</p>
+<hr>
+<h3 id="WAL"><a href="#WAL" class="headerlink" title="WAL"></a>WAL</h3><p>log文件的目的主要是为了系统发生故障时用于恢复。<strong>leveldb中log文件是在写Memtable之前进行写入的</strong>，主要调用了Writer::AddRecord函数。一个Writer绑定一个日志文件。每个日志文件由多个32KB的block组成，每个block有多条不定长的record组成，如下图：</p>
+<img src="/2022/11/04/leveldb_4/WAL.png">
+
+
+
+<p>每条Record的格式为：CRC(4)+Length(2)+Type(1)+Record Content，如果Block末尾不够七个字节，则会padding。<strong>在黑皮书《数据库系统实现》中，也说到，对于这种比较长的记录，在一个块中装不下，通常就会设计一个Type表示它是开始中间或者是结尾</strong>，这里也是如此。</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">class</span> <span class="title class_">Writer</span> &#123;</span><br><span class="line"> <span class="keyword">public</span>:</span><br><span class="line">  ···</span><br><span class="line">  <span class="function">Status <span class="title">AddRecord</span><span class="params">(<span class="type">const</span> Slice&amp; slice)</span></span>;</span><br><span class="line"></span><br><span class="line"> <span class="keyword">private</span>:</span><br><span class="line">  <span class="function">Status <span class="title">EmitPhysicalRecord</span><span class="params">(RecordType type, <span class="type">const</span> <span class="type">char</span>* ptr, <span class="type">size_t</span> length)</span></span>;</span><br><span class="line"></span><br><span class="line">  WritableFile* dest_; <span class="comment">// 日志文件</span></span><br><span class="line">  <span class="type">int</span> block_offset_;   <span class="comment">// 写到哪了</span></span><br><span class="line">  <span class="type">uint32_t</span> type_crc_[kMaxRecordType + <span class="number">1</span>];<span class="comment">// 用于计算CRC</span></span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="function">Status <span class="title">Writer::AddRecord</span><span class="params">(<span class="type">const</span> Slice&amp; slice)</span> </span>&#123;</span><br><span class="line">  <span class="type">const</span> <span class="type">char</span>* ptr = slice.<span class="built_in">data</span>();</span><br><span class="line">  <span class="type">size_t</span> left = slice.<span class="built_in">size</span>();</span><br><span class="line"></span><br><span class="line">  <span class="comment">// Fragment the record if necessary and emit it.  Note that if slice</span></span><br><span class="line">  <span class="comment">// is empty, we still want to iterate once to emit a single</span></span><br><span class="line">  <span class="comment">// zero-length record</span></span><br><span class="line">  Status s;</span><br><span class="line">  <span class="type">bool</span> begin = <span class="literal">true</span>;</span><br><span class="line">  <span class="keyword">do</span> &#123;</span><br><span class="line">    <span class="type">const</span> <span class="type">int</span> leftover = kBlockSize - block_offset_;</span><br><span class="line">    <span class="built_in">assert</span>(leftover &gt;= <span class="number">0</span>);</span><br><span class="line">    <span class="keyword">if</span> (leftover &lt; kHeaderSize) &#123; <span class="comment">// 不够七个字节</span></span><br><span class="line">      <span class="comment">// Switch to a new block</span></span><br><span class="line">      <span class="keyword">if</span> (leftover &gt; <span class="number">0</span>) &#123;</span><br><span class="line">        <span class="comment">// Fill the trailer (literal below relies on kHeaderSize being 7)</span></span><br><span class="line">        <span class="built_in">static_assert</span>(kHeaderSize == <span class="number">7</span>, <span class="string">&quot;&quot;</span>);</span><br><span class="line">        dest_-&gt;<span class="built_in">Append</span>(<span class="built_in">Slice</span>(<span class="string">&quot;\x00\x00\x00\x00\x00\x00&quot;</span>, leftover));</span><br><span class="line">      &#125;</span><br><span class="line">      block_offset_ = <span class="number">0</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// Invariant: we never leave &lt; kHeaderSize bytes in a block.</span></span><br><span class="line">    <span class="built_in">assert</span>(kBlockSize - block_offset_ - kHeaderSize &gt;= <span class="number">0</span>);</span><br><span class="line"></span><br><span class="line">    <span class="type">const</span> <span class="type">size_t</span> avail = kBlockSize - block_offset_ - kHeaderSize;<span class="comment">// 除去头部还有多少空间</span></span><br><span class="line">    <span class="type">const</span> <span class="type">size_t</span> fragment_length = (left &lt; avail) ? left : avail;<span class="comment">// 能装多少就装多少</span></span><br><span class="line"></span><br><span class="line">    RecordType type;</span><br><span class="line">    <span class="type">const</span> <span class="type">bool</span> end = (left == fragment_length);</span><br><span class="line">    <span class="keyword">if</span> (begin &amp;&amp; end) &#123;</span><br><span class="line">      type = kFullType;<span class="comment">// 当前Log Block里的空间足以容纳写入的数据</span></span><br><span class="line">    &#125; <span class="keyword">else</span> <span class="keyword">if</span> (begin) &#123;</span><br><span class="line">      type = kFirstType;<span class="comment">// 当剩余空间不够，且刚开始装数据，则当前record为第一个</span></span><br><span class="line">    &#125; <span class="keyword">else</span> <span class="keyword">if</span> (end) &#123;</span><br><span class="line">      type = kLastType;<span class="comment">// 当剩余空间够，且不是第一次装数据了，则当前record为末尾</span></span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">      type = kMiddleType;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    s = <span class="built_in">EmitPhysicalRecord</span>(type, ptr, fragment_length);<span class="comment">// 写入文件</span></span><br><span class="line">    ptr += fragment_length;</span><br><span class="line">    left -= fragment_length;</span><br><span class="line">    begin = <span class="literal">false</span>;</span><br><span class="line">  &#125; <span class="keyword">while</span> (s.<span class="built_in">ok</span>() &amp;&amp; left &gt; <span class="number">0</span>);</span><br><span class="line">  <span class="keyword">return</span> s;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h3 id="Compaction"><a href="#Compaction" class="headerlink" title="Compaction"></a>Compaction</h3><p>leveldb在写过程，写入Memtable之前，也需要保证Memtable中有足够的位置来容纳WriteBatch的数据，因此leveldb中封装了一个函数<code>MakeRoomForWrite</code>来完成腾出空间这一操作，这会导致数据库内部的一系列变化，例如：immutable memtable的落盘，后台的compaction等等。</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// REQUIRES: mutex_ is held</span></span><br><span class="line"><span class="comment">// REQUIRES: this thread is currently at the front of the writer queue</span></span><br><span class="line"><span class="function">Status <span class="title">DBImpl::MakeRoomForWrite</span><span class="params">(<span class="type">bool</span> force)</span> </span>&#123;</span><br><span class="line">  mutex_.<span class="built_in">AssertHeld</span>();</span><br><span class="line">  <span class="built_in">assert</span>(!writers_.<span class="built_in">empty</span>());</span><br><span class="line">  <span class="type">bool</span> allow_delay = !force;</span><br><span class="line">  Status s;</span><br><span class="line">  <span class="keyword">while</span> (<span class="literal">true</span>) &#123;</span><br><span class="line">      <span class="comment">// 后台出现错误</span></span><br><span class="line">    <span class="keyword">if</span> (!bg_error_.<span class="built_in">ok</span>()) &#123;</span><br><span class="line">      s = bg_error_;</span><br><span class="line">      <span class="keyword">break</span>;</span><br><span class="line">      <span class="comment">// 如果level0有太多文件，则睡眠一会儿等待合并再执行一会儿</span></span><br><span class="line">    &#125; <span class="keyword">else</span> <span class="keyword">if</span> (allow_delay &amp;&amp; versions_-&gt;<span class="built_in">NumLevelFiles</span>(<span class="number">0</span>) &gt;=</span><br><span class="line">                                  config::kL0_SlowdownWritesTrigger) &#123;</span><br><span class="line">      mutex_.<span class="built_in">Unlock</span>();</span><br><span class="line">      env_-&gt;<span class="built_in">SleepForMicroseconds</span>(<span class="number">1000</span>);</span><br><span class="line">      allow_delay = <span class="literal">false</span>;  <span class="comment">// Do not delay a single write more than once</span></span><br><span class="line">      mutex_.<span class="built_in">Lock</span>();</span><br><span class="line">      <span class="comment">// 有足够空间</span></span><br><span class="line">    &#125; <span class="keyword">else</span> <span class="keyword">if</span> (!force &amp;&amp;</span><br><span class="line">               (mem_-&gt;<span class="built_in">ApproximateMemoryUsage</span>() &lt;= options_.write_buffer_size)) &#123;</span><br><span class="line">      <span class="comment">// There is room in current memtable</span></span><br><span class="line">      <span class="keyword">break</span>;</span><br><span class="line">      <span class="comment">// imm还没彻底落盘，需要等待</span></span><br><span class="line">    &#125; <span class="keyword">else</span> <span class="keyword">if</span> (imm_ != <span class="literal">nullptr</span>) &#123;</span><br><span class="line">      <span class="built_in">Log</span>(options_.info_log, <span class="string">&quot;Current memtable full; waiting...\n&quot;</span>);</span><br><span class="line">      background_work_finished_signal_.<span class="built_in">Wait</span>();</span><br><span class="line">       <span class="comment">// level0还是有太多文件，则等待合并完成</span></span><br><span class="line">    &#125; <span class="keyword">else</span> <span class="keyword">if</span> (versions_-&gt;<span class="built_in">NumLevelFiles</span>(<span class="number">0</span>) &gt;= config::kL0_StopWritesTrigger) &#123;</span><br><span class="line">      <span class="built_in">Log</span>(options_.info_log, <span class="string">&quot;Too many L0 files; waiting...\n&quot;</span>);</span><br><span class="line">      background_work_finished_signal_.<span class="built_in">Wait</span>();</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">       <span class="comment">// Memtable满了，则创建新的log文件和新的Memtable，并将原Memtable标记为imm，并创建一个后台线程开始尝试compaction</span></span><br><span class="line">      <span class="built_in">assert</span>(versions_-&gt;<span class="built_in">PrevLogNumber</span>() == <span class="number">0</span>);</span><br><span class="line">      <span class="type">uint64_t</span> new_log_number = versions_-&gt;<span class="built_in">NewFileNumber</span>();</span><br><span class="line">      WritableFile* lfile = <span class="literal">nullptr</span>;</span><br><span class="line">      s = env_-&gt;<span class="built_in">NewWritableFile</span>(<span class="built_in">LogFileName</span>(dbname_, new_log_number), &amp;lfile);</span><br><span class="line">      <span class="keyword">if</span> (!s.<span class="built_in">ok</span>()) &#123;</span><br><span class="line">        versions_-&gt;<span class="built_in">ReuseFileNumber</span>(new_log_number);</span><br><span class="line">        <span class="keyword">break</span>;</span><br><span class="line">      &#125;</span><br><span class="line">      <span class="keyword">delete</span> log_;</span><br><span class="line">      <span class="keyword">delete</span> logfile_;</span><br><span class="line">      logfile_ = lfile;</span><br><span class="line">      logfile_number_ = new_log_number;</span><br><span class="line">      log_ = <span class="keyword">new</span> log::<span class="built_in">Writer</span>(lfile);</span><br><span class="line">      imm_ = mem_;</span><br><span class="line">      has_imm_.<span class="built_in">store</span>(<span class="literal">true</span>, std::memory_order_release);</span><br><span class="line">      mem_ = <span class="keyword">new</span> <span class="built_in">MemTable</span>(internal_comparator_);</span><br><span class="line">      mem_-&gt;<span class="built_in">Ref</span>();</span><br><span class="line">      force = <span class="literal">false</span>;  <span class="comment">// Do not force another compaction if have room</span></span><br><span class="line">      <span class="built_in">MaybeScheduleCompaction</span>();</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">return</span> s;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>尝试合并的过程，就是<strong>判断当前是否需要compaction（判断是否已经有compaction线程，系统是否有错，系统是否已经关闭，某些level是否需要合并</strong>），如果需要就开一个后台线程进行compaction，<strong>compaction完还需要再次尝试合并一下</strong>。这些逻辑的判断，就不展示代码了 ，这里主要说明是如何进行合并的。合并的函数主要在<code>void DBImpl::BackgroundCompaction()</code>中。leveldb中，compaction分为2大类：<strong>minor compaction，major compaction</strong>。前者是将memdb中的数据落入sst文件，后者则是将sst文件进行归并，提高文件的检索效率。</p>
+<p><strong>因为牵扯的类和函数的代码体量太大了，下面就重点说一下思路：</strong></p>
+<p>在BackgroundCompaction()中主要完成了如下几件事：</p>
+<ul>
+<li>先尝试minor compaction</li>
+<li>如果有手动compaction，则手动compaction</li>
+<li>如果没有，则尝试major compaction<ul>
+<li>如果这些合并的文件不需要合并，直接移动下层就行，那就直接移动</li>
+<li>合并</li>
+</ul>
+</li>
+<li>删除无用文件</li>
+</ul>
+<hr>
+<h4 id="minor-compaction"><a href="#minor-compaction" class="headerlink" title="minor compaction"></a>minor compaction</h4><p>minor compaction主要完成两件事：</p>
+<ul>
+<li><p>Build一个Table并写入SST中</p>
+</li>
+<li><p>选择将SST落入第几层</p>
+<ul>
+<li><p>在策略上，<strong>尽量要将新的compact的文件推到高level</strong>，因为在level 0 如果控制文件过多，compaction IO和查找都比较耗费。</p>
+<p>另一方面也不能推至过高level，控制查找该文件中的kv的查找次数。</p>
+<p>如果新生成的sstable和Level 0的sstable有重叠，新产生的sstable就直接加入level 0；如果与level1不重叠，且与level2重叠得不多，则加入level1；如果与level2不重叠，且与level3重叠得不多，则加入level2。最高推到Level2。</p>
+<p><strong>为什么有这个重叠得不多？在compaction时，避免与下层合并时的文件过大过多。</strong></p>
+</li>
+</ul>
+</li>
+</ul>
+<hr>
+<h4 id="major-compaction"><a href="#major-compaction" class="headerlink" title="major compaction"></a>major compaction</h4><p>major compaction进行的条件有两个：</p>
+<ul>
+<li>Size Compaction：文件数目太多或者某一层级文件总大小过大。</li>
+<li>Seek Compaction：某个文件seek次数太多。为什么seek次数太多也要合并？LevelDB认为如果一个 sst 文件在 level i 中总是miss seek，而是在 level i+1 中seek success，那么就认为该文件应该在level i+1中，否则每次都会到该文件查一下又查不到。</li>
+</ul>
+<p>显而易见，Size Compaction优先级更高，应该先执行，因为这是LSM结构的核心逻辑。</p>
+<p>Seek Compaction在选择文件时，就单单针对那些Seek次数过多的文件。</p>
+<p>Size Compaction则需要对一整个level进行合并，按key顺序进行合并，直到Size小于阈值。由于level0的特殊性，故分为以下两种：</p>
+<ul>
+<li><p>Level0 –&gt; Level1<br>1）选择一个level0文件，考虑上一次compaction做到了哪个key，然后大于该key的第一个文件即为level 0的所选文件。<br>2）再找到一个和该level0有重复key的level1文件。<br>3）再查找出所有和这个level1文件有重复key的level0文件。<br>4）将所有level0文件和level1文件合并成一个新的level1文件。</p>
+</li>
+<li><p>Level N –&gt; Level N +1<br>1）选择一个 Level N的文件，考虑上一次compaction做到了哪个key，然后大于该key的第一个文件即为level N的所选文件。<br>2）查找所有和该文件由重复key的Level N +1的文件。<br>3）compaction，生成新的Level N + 1的文件。</p>
+</li>
+</ul>
+
+    </div>
+
+    
+    
+    
+        
+
+<div>
+<ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>Post author:  </strong>llf333
+  </li>
+  <li class="post-copyright-link">
+    <strong>Post link: </strong>
+    <a href="http://llf333.github.io/2022/11/04/leveldb_4/" title="leveldb源码阅读----WAL和Compaction">http://llf333.github.io/2022/11/04/leveldb_4/</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>Copyright Notice:  </strong>All articles in this blog are licensed under <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="noopener" target="_blank"><i class="fab fa-fw fa-creative-commons"></i>BY-NC-SA</a> unless stating additionally. Please give credit to the original author when you use it elsewhere.
+</ul>
+</div>
+
+
+      <footer class="post-footer">
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2022/10/31/leveldb_3Tables/" rel="prev" title="leveldb源码阅读----读SSTable">
+      <i class="fa fa-chevron-left"></i> leveldb源码阅读----读SSTable
+    </a></div>
+      <div class="post-nav-item"></div>
+    </div>
+      </footer>
+    
+  </article>
+
+
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#leveldb%E6%BA%90%E7%A0%81%E9%98%85%E8%AF%BB4%E2%80%94%E2%80%94WAL%E5%92%8CCompaction"><span class="nav-number">1.</span> <span class="nav-text">leveldb源码阅读4——WAL和Compaction</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#WAL"><span class="nav-number">1.0.1.</span> <span class="nav-text">WAL</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Compaction"><span class="nav-number">1.0.2.</span> <span class="nav-text">Compaction</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#minor-compaction"><span class="nav-number">1.0.2.1.</span> <span class="nav-text">minor compaction</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#major-compaction"><span class="nav-number">1.0.2.2.</span> <span class="nav-text">major compaction</span></a></li></ol></li></ol></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="llf333"
+      src="/images/llf.jpg">
+  <p class="site-author-name" itemprop="name">llf333</p>
+  <div class="site-description" itemprop="description">Every man is the master of his own fortune.</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives">
+          <span class="site-state-item-count">15</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories">
+          
+        <span class="site-state-item-count">3</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/llf333" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;llf333" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2022</span>
+  <span class="with-love">
+    <i class="fa-light fa-watermelon-slice"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">llf333</span>
+</div>
+
+<!--
+  <div class="powered-by">Powered by <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a>
+  </div>-->
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

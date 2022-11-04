@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 6.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"llf333.github.io","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"always","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":true},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta property="og:type" content="article">
+<meta property="og:title" content="cmu15-445&#x2F;645 2021 Project4">
+<meta property="og:url" content="http://llf333.github.io/2022/10/25/cmu15-445_project4/index.html">
+<meta property="og:site_name" content="llf333">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="http://llf333.github.io/2022/10/25/cmu15-445_project4/res.png">
+<meta property="article:published_time" content="2022-10-25T06:14:27.000Z">
+<meta property="article:modified_time" content="2022-10-25T09:16:33.015Z">
+<meta property="article:author" content="llf333">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://llf333.github.io/2022/10/25/cmu15-445_project4/res.png">
+
+<link rel="canonical" href="http://llf333.github.io/2022/10/25/cmu15-445_project4/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'en'
+  };
+</script>
+
+  <title>cmu15-445/645 2021 Project4 | llf333</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">llf333</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories" rel="section"><i class="fa fa-th fa-fw"></i>Categories</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="en">
+    <link itemprop="mainEntityOfPage" href="http://llf333.github.io/2022/10/25/cmu15-445_project4/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/llf.jpg">
+      <meta itemprop="name" content="llf333">
+      <meta itemprop="description" content="Every man is the master of his own fortune.">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="llf333">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          cmu15-445/645 2021 Project4
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+              
+
+              <time title="Created: 2022-10-25 14:14:27 / Modified: 17:16:33" itemprop="dateCreated datePublished" datetime="2022-10-25T14:14:27+08:00">2022-10-25</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/C/" itemprop="url" rel="index"><span itemprop="name">C++</span></a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Database/" itemprop="url" rel="index"><span itemprop="name">Database</span></a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <hr>
+<span id="more"></span>
+
+<h1 id="Project4——-CONCURRENCY-CONTROL"><a href="#Project4——-CONCURRENCY-CONTROL" class="headerlink" title="Project4——- CONCURRENCY CONTROL"></a>Project4——- CONCURRENCY CONTROL</h1><h2 id="Instroduction"><a href="#Instroduction" class="headerlink" title="Instroduction"></a>Instroduction</h2><p>前三个Lab中，我们分别完成了Buffer Pool、Hash Index、Executor的实现。但整个系统仍然缺少事务级别的查询，在本次Lab中，主要是通过实现一个Lock Manger来支持事务级别的并发查询，并且支持不同的隔离级别来适当授予和释放读写锁。</p>
+<p>整个Lab分为三个部分：</p>
+<ul>
+<li>Lock Manager的实现</li>
+<li>死锁预防</li>
+<li>完善Executor的代码以支持并发，并记录回滚所需信息</li>
+</ul>
+<hr>
+<h2 id="Lock-Manager"><a href="#Lock-Manager" class="headerlink" title="Lock Manager"></a>Lock Manager</h2><h3 id="第一个坑"><a href="#第一个坑" class="headerlink" title="第一个坑"></a>第一个坑</h3><p>刚看完整个实验要求并粗略读了代码框架后，我仍然有些迷糊，但记录了一些信息和疑问，在此记录一下：</p>
+<ul>
+<li><p>对于一个Transaction，我们需要的是Tuple-Level的锁。</p>
+</li>
+<li><p>Lock Manager是对各个Tuple锁的封装</p>
+</li>
+<li><p>针对不同的隔离级别，对LockShared、LockExclusive、LockUpgrade、Unlock有何不同？</p>
+</li>
+</ul>
+<p>看到Lab的框架中，Lock Manager的构成主要如下，从理论来说，<strong>Lock Manager所提供的必要功能应该只有对Tuple的锁进行<em>逻辑上</em>的授予和回收</strong>，并不一定要真正的为其提供一个物理的Tuple锁。对于Lock Manager中的Latch的存在，只是为了合理地维护其保存的内部信息，例如源码中的lock_table_。</p>
+<p>因此，在第一版的代码中，我并没有为每个Tuple提供一个锁（物理上的）。但这就引发了一个问题，当我在并发的情况下，同时想要获取多个Tuple的锁，这可能需要更改其请求队列中的信息，如果没有Tuple级别的锁，那我就必须在更改期间一直持有Lock Manager中的那个Latch，这就不能并发了，很不合理。最终，还是为每个Tuple的请求队列增加了一把锁tuple_mtx_来解决上诉问题，但这里需要注意的是，这个锁并不是说只有持有这个锁，才持有tuple的锁，这个锁在逻辑上只是维护并发时修改que信息的安全而设立的，仍然符合Lock Manager只是逻辑上的封装这一定义。</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">class</span> <span class="title class_">LockManager</span> &#123;</span><br><span class="line">    <span class="keyword">class</span> <span class="title class_">LockRequestQueue</span> &#123;</span><br><span class="line">        <span class="keyword">public</span>:</span><br><span class="line">        std::list&lt;LockRequest&gt; request_queue_;</span><br><span class="line">        std::condition_variable cv_;</span><br><span class="line">        <span class="type">txn_id_t</span> upgrading_ = INVALID_TXN_ID;</span><br><span class="line">        std::mutex tuple_mtx_;  <span class="comment">// 并不是说只有持有这个锁，才持有tuple的锁，这个锁在逻辑上只是维护并发时修改que信息的安全而设立的</span></span><br><span class="line">    &#125;;</span><br><span class="line">    </span><br><span class="line"> <span class="keyword">public</span>:</span><br><span class="line">  <span class="built_in">LockManager</span>() = <span class="keyword">default</span>;</span><br><span class="line">  ~<span class="built_in">LockManager</span>() = <span class="keyword">default</span>;</span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="type">bool</span> <span class="title">LockShared</span><span class="params">(Transaction *txn, <span class="type">const</span> RID &amp;rid)</span></span>;</span><br><span class="line">  <span class="function"><span class="type">bool</span> <span class="title">LockExclusive</span><span class="params">(Transaction *txn, <span class="type">const</span> RID &amp;rid)</span></span>;</span><br><span class="line">  <span class="function"><span class="type">bool</span> <span class="title">LockUpgrade</span><span class="params">(Transaction *txn, <span class="type">const</span> RID &amp;rid)</span></span>;</span><br><span class="line">  <span class="function"><span class="type">bool</span> <span class="title">Unlock</span><span class="params">(Transaction *txn, <span class="type">const</span> RID &amp;rid)</span></span>;</span><br><span class="line">    </span><br><span class="line"> <span class="keyword">private</span>:</span><br><span class="line">  std::mutex latch_;</span><br><span class="line">  std::unordered_map&lt;RID, LockRequestQueue&gt; lock_table_;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h3 id="第二个坑"><a href="#第二个坑" class="headerlink" title="第二个坑"></a>第二个坑</h3><p>第二个坑主要就是关于对于request_queue_的理解。在初看代码后，我对其的理解就是把它当成一个队列来使用，当有事务想要请求获得锁，就在队列末尾增加请求，然后重复检测自己的请求是否在队头，成功获取后就弹出队列，有点类似生产者消费者模型。当然请求在队头时也不能轻易地获取锁，还需要判断当前Tuple的状态（空闲、读、写），这个信息需要额外记录。</p>
+<p>这样设计最大的问题就在于，请求的信息在成功获取锁后被丢掉了，这些信息是不能丢掉的，整个Lock Manager是需要记录当前各个Tuple的使用情况的，如果直接弹出队列，那么肯定需要重新记录一下这些信息。不是说这种实现不可行，主要原因就是增加了复杂性。所以我觉得这里的que类型使用的是list也算是一种暗示，<strong>与其把它理解成队列，不如理解成一张表，表内记录了所有想用的和在用的请求</strong>，这样后续就会方便很多。</p>
+<p>明确后request_queue_的使用后，对于<code>LockShared</code>、<code>LockExclusive</code>、<code>LockUpgrade</code>以及<code>Unlock</code>的逻辑就相对明确了。</p>
+<ul>
+<li>对于<code>LockShared</code>，在请求加入链表末尾后，<strong>判断其之前所有的请求是否都已经获取成功，并且其中没有写锁</strong>。如果成立，则授予请求。</li>
+<li>对于<code>LockExclusive</code>，在请求加入链表末尾后，<strong>判断其是否在链表头</strong>。如果成立，则授予请求。</li>
+<li>对于<code>LockUpgrade</code>，<strong>查找链表中的请求，如果不在读，就返回失败；否则，将原读请求删除，添加写请求至所有未成功获取的请求的最前面，然后判断，判断条件同<code>LockExclusive</code>。</strong>为什么要添加到最前面，因为我已经在读了，升级的优先级肯定高于其他请求。</li>
+<li>对于<code>Unlock</code>，<strong>查找链表中的请求，然后将其删除，然后notify</strong>。</li>
+</ul>
+<hr>
+<h2 id="DEADLOCK-PREVENTION"><a href="#DEADLOCK-PREVENTION" class="headerlink" title="DEADLOCK PREVENTION"></a>DEADLOCK PREVENTION</h2><p>这个死锁是事务级别的锁，简单的例子就是：事务A在持有Tuple1的情况下想要持有Tuple2，事务B在持有Tuple2的情况下想要持有Tuple1。这就导致了死锁。<strong>对于死锁，常见的解决方式有两种，一种是死锁解除，一种是死锁预防</strong>。本次实验中，需要使用的方式是死锁预防。</p>
+<p>死锁解除的方式通常是开一个后台进程，定期判断所有事务的等待关系是否存在环，如果存在环就说明发生了死锁，需要Abort掉一个Victim，Victim的选择方式有多种，比如按时间戳，按照执行进度，按照锁持有数量，按照回滚代价等。</p>
+<p>死锁预防的方式则主要有两种，Wait-Die（老的等新的），Wound-Wait（老的抢新的）。这个名字怎么记呢，记住第一个单词的状态表示老的事务的状态即可。本次实现的Wound-Wait，代码中就是在check函数中添加了如下逻辑，<strong>如果老的事务在申请请求时，发现当前链表中，在它之前有事务比他新，则它可以直接将新的事务Abort掉。对于share中的Abort，只Abort掉比它新的写锁请求。</strong>这里有个疑惑就是，到底是无论是否持有都一律Abort掉，还是只Abort掉持有的事务，测试中是前者，认真思索了下，确实前者合理，假如一个事务比当前老的想要获取请求的新，且当前没有持有，那么如果当前没有把它Abort掉，那么在之后它由于在队列前，它先持有，老的还是无法持有，这就仍然有死锁的风险，虽然说老的在之后的check时会Abort掉前面持有的，但是老的在没有被notify的时候，是不会持续进行check的，不如一律Abort掉。</p>
+<hr>
+<h2 id="CONCURRENT-QUERY-EXECUTION"><a href="#CONCURRENT-QUERY-EXECUTION" class="headerlink" title="CONCURRENT QUERY EXECUTION"></a>CONCURRENT QUERY EXECUTION</h2><p>Isolation Level：</p>
+<ul>
+<li><p>SERIALIZABLE：要X锁和S锁，按照S2PL协议使用，还需要对Index加锁</p>
+</li>
+<li><p>REPEATABLE READ：需要X锁和S锁，按照S2PL协议使用</p>
+</li>
+<li><p>READ COMMITTED：S锁用完就释放</p>
+</li>
+<li><p>READ UNCOMMITTED：不需要使用S锁</p>
+</li>
+</ul>
+<p>本次实验只用对下面三个等级进行实现。代码中主要分两个部分，一个LockShared和LockExclusive在<code>REPEATABLE READ</code>等级下，需要判断<code>TXN</code>的状态是否符合2PL的要求。另一个就是对各个Executor进行完善。</p>
+<hr>
+<h2 id="Result"><a href="#Result" class="headerlink" title="Result"></a>Result</h2><img src="/2022/10/25/cmu15-445_project4/res.png">
+
+
+
+
+    </div>
+
+    
+    
+    
+        
+
+<div>
+<ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>Post author:  </strong>llf333
+  </li>
+  <li class="post-copyright-link">
+    <strong>Post link: </strong>
+    <a href="http://llf333.github.io/2022/10/25/cmu15-445_project4/" title="cmu15-445&#x2F;645 2021 Project4">http://llf333.github.io/2022/10/25/cmu15-445_project4/</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>Copyright Notice:  </strong>All articles in this blog are licensed under <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="noopener" target="_blank"><i class="fab fa-fw fa-creative-commons"></i>BY-NC-SA</a> unless stating additionally. Please give credit to the original author when you use it elsewhere.
+</ul>
+</div>
+
+
+      <footer class="post-footer">
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2022/10/01/cmu15-445_project3/" rel="prev" title="cmu15-445/645 2021 Project3">
+      <i class="fa fa-chevron-left"></i> cmu15-445/645 2021 Project3
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2022/10/26/leveldb_Basic-Tools/" rel="next" title="leveldb基本组件源码阅读">
+      leveldb基本组件源码阅读 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+
+
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#Project4%E2%80%94%E2%80%94-CONCURRENCY-CONTROL"><span class="nav-number">1.</span> <span class="nav-text">Project4——- CONCURRENCY CONTROL</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#Instroduction"><span class="nav-number">1.1.</span> <span class="nav-text">Instroduction</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Lock-Manager"><span class="nav-number">1.2.</span> <span class="nav-text">Lock Manager</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%AC%AC%E4%B8%80%E4%B8%AA%E5%9D%91"><span class="nav-number">1.2.1.</span> <span class="nav-text">第一个坑</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%AC%AC%E4%BA%8C%E4%B8%AA%E5%9D%91"><span class="nav-number">1.2.2.</span> <span class="nav-text">第二个坑</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#DEADLOCK-PREVENTION"><span class="nav-number">1.3.</span> <span class="nav-text">DEADLOCK PREVENTION</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#CONCURRENT-QUERY-EXECUTION"><span class="nav-number">1.4.</span> <span class="nav-text">CONCURRENT QUERY EXECUTION</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Result"><span class="nav-number">1.5.</span> <span class="nav-text">Result</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="llf333"
+      src="/images/llf.jpg">
+  <p class="site-author-name" itemprop="name">llf333</p>
+  <div class="site-description" itemprop="description">Every man is the master of his own fortune.</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives">
+          <span class="site-state-item-count">15</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories">
+          
+        <span class="site-state-item-count">3</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/llf333" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;llf333" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2022</span>
+  <span class="with-love">
+    <i class="fa-light fa-watermelon-slice"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">llf333</span>
+</div>
+
+<!--
+  <div class="powered-by">Powered by <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a>
+  </div>-->
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

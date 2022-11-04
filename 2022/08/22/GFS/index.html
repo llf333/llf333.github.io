@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 6.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"llf333.github.io","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"always","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":true},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta property="og:type" content="article">
+<meta property="og:title" content="GFS论文解读">
+<meta property="og:url" content="http://llf333.github.io/2022/08/22/GFS/index.html">
+<meta property="og:site_name" content="llf333">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="http://llf333.github.io/2022/08/22/GFS/structure.png">
+<meta property="og:image" content="http://llf333.github.io/2022/08/22/GFS/master.png">
+<meta property="og:image" content="http://llf333.github.io/2022/08/22/GFS/write.png">
+<meta property="og:image" content="http://llf333.github.io/2022/08/22/GFS/consistency.png">
+<meta property="article:published_time" content="2022-08-22T09:28:33.000Z">
+<meta property="article:modified_time" content="2022-08-22T12:50:30.726Z">
+<meta property="article:author" content="llf333">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://llf333.github.io/2022/08/22/GFS/structure.png">
+
+<link rel="canonical" href="http://llf333.github.io/2022/08/22/GFS/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'en'
+  };
+</script>
+
+  <title>GFS论文解读 | llf333</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">llf333</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories" rel="section"><i class="fa fa-th fa-fw"></i>Categories</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="en">
+    <link itemprop="mainEntityOfPage" href="http://llf333.github.io/2022/08/22/GFS/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/llf.jpg">
+      <meta itemprop="name" content="llf333">
+      <meta itemprop="description" content="Every man is the master of his own fortune.">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="llf333">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          GFS论文解读
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+              
+
+              <time title="Created: 2022-08-22 17:28:33 / Modified: 20:50:30" itemprop="dateCreated datePublished" datetime="2022-08-22T17:28:33+08:00">2022-08-22</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Distributed-Systems/" itemprop="url" rel="index"><span itemprop="name">Distributed Systems</span></a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <hr>
+<span id="more"></span>
+
+<h2 id="CAP"><a href="#CAP" class="headerlink" title="CAP"></a>CAP</h2><p>C：Consistency</p>
+<p>A：Availability(Fault Tolerance)</p>
+<p>P：Partition-tolerance</p>
+<p>最多同时实现两个。</p>
+<h2 id="Structure"><a href="#Structure" class="headerlink" title="Structure"></a>Structure</h2><img src="/2022/08/22/GFS/structure.png">
+
+<h3 id="三类节点"><a href="#三类节点" class="headerlink" title="三类节点"></a>三类节点</h3><ul>
+<li><p>client：客户端</p>
+</li>
+<li><p>master：单中心节点</p>
+</li>
+<li><p>chunkserver：存储文件数据的节点。</p>
+</li>
+</ul>
+<h3 id="两类数据"><a href="#两类数据" class="headerlink" title="两类数据"></a>两类数据</h3><ul>
+<li><p>master中的元数据</p>
+</li>
+<li><p>chunkserver中的文件数据</p>
+</li>
+</ul>
+<h3 id="master存储的元数据"><a href="#master存储的元数据" class="headerlink" title="master存储的元数据"></a>master存储的元数据</h3><img src="/2022/08/22/GFS/master.png" width="70%">
+
+<ul>
+<li><p>文件namespace(持久化)</p>
+</li>
+<li><p>文件和chunkID的映射(持久化)</p>
+</li>
+<li><p>chunkID和chunk位置的映射(不持久化)</p>
+</li>
+<li><p>为什么第三类数据不持久化,因为这个数据可以在master重启后从chunkserver中获取。</p>
+</li>
+</ul>
+<h3 id="chunk大小为64MB"><a href="#chunk大小为64MB" class="headerlink" title="chunk大小为64MB"></a>chunk大小为64MB</h3><p>为什么取这么大？</p>
+<ul>
+<li><p>GFS是对大文件进行设计的,一般是G级别的文件,一般不会有碎片空间浪费。</p>
+</li>
+<li><p>使chunk数量减少,减少了存储chunk的信息(存储在master节点),节省了宝贵的内存资源。</p>
+</li>
+<li><p>更容易对一个chunk进行操作,例如要追加40MB的内容,这个操作可能就在一个chunk上完成了(更有局部性原理的特性),但假如chunk只有4MB,那么追加操作可能会有十余次操作,从网络上说,增加了TCP传输负担,从系统上说,增加了系统的寻址和交互次数,影响了系统的性能。</p>
+</li>
+</ul>
+<h3 id="为什么选择单中心节点？"><a href="#为什么选择单中心节点？" class="headerlink" title="为什么选择单中心节点？"></a>为什么选择单中心节点？</h3><ul>
+<li>更简单可控,单节点的瓶颈并非想象中的严重,有一系列措施进行优化(内存调度,控制流和数据流分离,元数据压缩,增大chunk大小等),多中心节点实现的难度也并非想象中的简单。但这个也是GFS最大的瓶颈。</li>
+</ul>
+<h2 id="Availability"><a href="#Availability" class="headerlink" title="Availability"></a>Availability</h2><h3 id="master"><a href="#master" class="headerlink" title="master"></a>master</h3><ul>
+<li><p>通过WAL日志对master元数据的写操作进行日志记录(日志记录也有checkpoint(snapshot)功能),这一步可以使得master宕机后能够自动恢复。</p>
+</li>
+<li><p>主备切换,使用chubby服务：设置有primary master和shadow master,每个写操作都会发送给shadow master,只有shadow master正确记录日志后,primary master才能算操作成功,这一步可以使得master长期宕机后保证有新的master接任。</p>
+</li>
+</ul>
+<h3 id="chunk"><a href="#chunk" class="headerlink" title="chunk"></a>chunk</h3><ul>
+<li><p>首先,这里的高可用和容错概念是chunk层(数据层面)的,更底层,而不是chunkserver层(物理节点层面)的,这样可以保证数据在chunkserver中自由流动,使系统具备超强的可扩展性；相比之下,master的高可用是在物理节点层面上的。</p>
+</li>
+<li><p>具体思路：</p>
+<ul>
+<li>对一个chunk的每次写入,必须确保三个副本的写入都完成(并不是大多数,保证读的高效(就近),才能视为写入成功。</li>
+<li>某个chunkserver在宕机后,导致副本数量不足,则一段时间后master在另一个chunkserver中重建副本。</li>
+<li>每个chunk有校验和,读取时若校验和不匹配,则chunkserver会反应给master,让master做重建副本工作</li>
+<li>负载均衡,某个chunkserver负载过高,则会搬动chunk到另外的chunkserver上。</li>
+</ul>
+<p>总体来说,有相当一部分的工作移交给master,在master的高可用下,chunk的高可用也得到的保证。</p>
+</li>
+</ul>
+<h2 id="Consistency"><a href="#Consistency" class="headerlink" title="Consistency"></a>Consistency</h2><h3 id="Read"><a href="#Read" class="headerlink" title="Read"></a>Read</h3><ol>
+<li><p>是客户端(或者应用程序)将文件名和偏移量发送给Master。</p>
+</li>
+<li><p>Master节点将Chunk id 和对应的chunkserver发送给客户端。客户端会选择一个网络上<strong>最近</strong>的服务器进行读取(Google的数据中心中,IP地址是连续的,所以可以从IP地址的差异判断网络位置的远近),读取时需要检查校验和。</p>
+</li>
+</ol>
+<h3 id="Write"><a href="#Write" class="headerlink" title="Write"></a>Write</h3><ol>
+<li>客户端询问Master哪个块服务器持有这个块的当前租约,以及这个块的其它副本位置。如果没有一个租约,则Master选择一个副本并授予一个租约(没有在图上显示),并增加版本号。</li>
+<li>Master回复客户端primary的标识,以及其它副本的位置。客户端缓存这些数据用于以后的修改操作。只有当primary不可达或者接收到primary不再持有租约时才需要再一次请求主节点。</li>
+<li>客户端将数据推送到所有的副本。一个客户端能够以<strong>任意顺序</strong>进行推送,每个块服务器将数据保存在内部的LRU缓存中,直到数据被使用或者过期被替换掉。通过对<strong>数据流和控制流的分离</strong>,我们能够通过基于网络拓扑来调度数据流,不管哪个块服务器为primary(如图),以此提高性能,这个在有的博客里面介绍为“<strong>流水线技术</strong>”,和传统的主备同步(Raft)不一样,直观理解理解就是数据量大的数据流大家有力出力,而数据量小的控制流由primary单独决定。</li>
+<li>一旦所有的副本都确认接收到了数据,客户端将向primary 发送一个写请求。这个请求确定了之前的数据被推送到了所有副本。Primary为接收到的所有修改操作分配连续的序列号,序列号提供了严格的序列化,这里保证了在这单个chunk的强一致性,应用按序列号顺序执行修改操作,进而改变自己的状态。</li>
+<li>Primary将写请求发送到所有的secondary副本上。每个secondary副本按照primary分配的相同的序列号顺序执行这些修改操作。</li>
+<li>Secondary副本回复primary。表示它们已经完成了所有的操作。</li>
+<li>Primary回复客户端。任意副本上的任意错误都将报告给客户端。在一些错误情况下,写操作可能在primary和一些secondary副本上执行成功。(如果失败发生在primary,它将不会分片一个序列号,并且不会被传递。)客户端的请求被视为已经失败,这个修改的区域停留在不一致的状态上。我们的客户端代码通过重试失败的修改操作来处理这种错误。在从头开始重复执行之前,它将在3-7步骤上做几次尝试。</li>
+</ol>
+<img src="/2022/08/22/GFS/write.png" width="30%">
+
+
+
+<h3 id="Record-Append和Write"><a href="#Record-Append和Write" class="headerlink" title="Record Append和Write"></a>Record Append和Write</h3><p>GFS推荐Record Append,而不是Write,为什么？</p>
+<ul>
+<li><p><strong>Write</strong>操作可能涉及到多个chunk操作,可能是一个分布式操作,在GFS中,<strong>并发Write只能保证副本间的一致,而不能保证这种一致是正确的</strong>,为什么呢？例如三个并发write操作123涉及到两个chunk,分别是A,B,在chunkA的primary中定义的写序列可能是123,而在chunkB的primary中的定义写序列可能是321,导致最终结果是A3,B1,但正确结果是A3,B3,这就无法保证结果的正确。想要保证强一致性,则可以使用两阶段提交,但是巨大文件的两阶段提交,一旦有一个chunk文件写入失败,则全局就要等待,代价太大了。</p>
+</li>
+<li><p><strong>Record Append</strong>只会涉及到文件的最后一个chunk或者新增chunk,这里做了两个优化,一是限制Append操作的大小小于64MB,二是在空间不足时直接新增chunk,这种优化保证了atomic,<strong>最差的结果是副本不一致,部分副本出现重复Append,但结果仍然是正确的</strong>。如何解决重复追加,可以记录文件长度,可以检验校验和等。</p>
+</li>
+</ul>
+<img src="/2022/08/22/GFS/consistency.png">
+
+<p>defined：一致且正确</p>
+<p>consistent：一致</p>
+<h3 id="Split-Brain"><a href="#Split-Brain" class="headerlink" title="Split Brain"></a>Split Brain</h3><p>使用租约机制解决脑裂问题。</p>
+<p>在某个时间点,Master指定了一个Primary,之后Master会一直通过定期的ping来检查它是否还存活。因为如果它挂了,Master需要选择一个新的Primary。Master发送了一些ping给Primary,并且Primary没有回应,<strong>你可能会认为Master会在那个时间立刻指定一个新的Primary。但事实是,这是一个错误的想法。</strong>为什么是一个错误的想法呢？因为可能是网络的原因导致ping没有成功,所以有可能Primary还活着,但是网络的原因导致ping失败了。但同时,Primary还可以与客户端交互,如果Master为Chunk指定了一个新的Primary,那么就会同时有两个Primary处理写请求,这两个Primary不知道彼此的存在,会分别处理不同的写请求,最终会导致有两个不同的数据拷贝。这被称为<strong>脑裂</strong>(split-brain)。</p>
+<p>Master采取的方式是,当指定一个Primary时,为它分配一个租约,Primary只在租约内有效。Master和Primary都会知道并记住租约有多长,当租约过期了,Primary会停止响应客户端请求,它会忽略或者拒绝客户端请求。因此,<strong>如果Master不能与Primary通信,并且想要指定一个新的Primary时,Master会等到前一个Primary的租约到期。</strong>这意味着,Master什么也不会做,只是等待租约到期。租约到期之后,可以确保旧的Primary停止了它的角色,<strong>这时Master可以安全的指定一个新的Primary而不用担心出现这种可怕的脑裂的情况。</strong></p>
+
+    </div>
+
+    
+    
+    
+        
+
+<div>
+<ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>Post author:  </strong>llf333
+  </li>
+  <li class="post-copyright-link">
+    <strong>Post link: </strong>
+    <a href="http://llf333.github.io/2022/08/22/GFS/" title="GFS论文解读">http://llf333.github.io/2022/08/22/GFS/</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>Copyright Notice:  </strong>All articles in this blog are licensed under <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="noopener" target="_blank"><i class="fab fa-fw fa-creative-commons"></i>BY-NC-SA</a> unless stating additionally. Please give credit to the original author when you use it elsewhere.
+</ul>
+</div>
+
+
+      <footer class="post-footer">
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2022/08/20/High-Concurrency-Architecture/" rel="prev" title="大并发服务器架构和优化手段">
+      <i class="fa fa-chevron-left"></i> 大并发服务器架构和优化手段
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2022/08/27/mapreduce_analyse/" rel="next" title="MapReduce论文解读">
+      MapReduce论文解读 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+
+
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#CAP"><span class="nav-number">1.</span> <span class="nav-text">CAP</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Structure"><span class="nav-number">2.</span> <span class="nav-text">Structure</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%B8%89%E7%B1%BB%E8%8A%82%E7%82%B9"><span class="nav-number">2.1.</span> <span class="nav-text">三类节点</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%B8%A4%E7%B1%BB%E6%95%B0%E6%8D%AE"><span class="nav-number">2.2.</span> <span class="nav-text">两类数据</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#master%E5%AD%98%E5%82%A8%E7%9A%84%E5%85%83%E6%95%B0%E6%8D%AE"><span class="nav-number">2.3.</span> <span class="nav-text">master存储的元数据</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#chunk%E5%A4%A7%E5%B0%8F%E4%B8%BA64MB"><span class="nav-number">2.4.</span> <span class="nav-text">chunk大小为64MB</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%B8%BA%E4%BB%80%E4%B9%88%E9%80%89%E6%8B%A9%E5%8D%95%E4%B8%AD%E5%BF%83%E8%8A%82%E7%82%B9%EF%BC%9F"><span class="nav-number">2.5.</span> <span class="nav-text">为什么选择单中心节点？</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Availability"><span class="nav-number">3.</span> <span class="nav-text">Availability</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#master"><span class="nav-number">3.1.</span> <span class="nav-text">master</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#chunk"><span class="nav-number">3.2.</span> <span class="nav-text">chunk</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Consistency"><span class="nav-number">4.</span> <span class="nav-text">Consistency</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#Read"><span class="nav-number">4.1.</span> <span class="nav-text">Read</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Write"><span class="nav-number">4.2.</span> <span class="nav-text">Write</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Record-Append%E5%92%8CWrite"><span class="nav-number">4.3.</span> <span class="nav-text">Record Append和Write</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Split-Brain"><span class="nav-number">4.4.</span> <span class="nav-text">Split Brain</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="llf333"
+      src="/images/llf.jpg">
+  <p class="site-author-name" itemprop="name">llf333</p>
+  <div class="site-description" itemprop="description">Every man is the master of his own fortune.</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives">
+          <span class="site-state-item-count">15</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories">
+          
+        <span class="site-state-item-count">3</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/llf333" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;llf333" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2022</span>
+  <span class="with-love">
+    <i class="fa-light fa-watermelon-slice"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">llf333</span>
+</div>
+
+<!--
+  <div class="powered-by">Powered by <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a>
+  </div>-->
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

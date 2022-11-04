@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 6.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"llf333.github.io","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"always","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":true},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta property="og:type" content="article">
+<meta property="og:title" content="leveldb源码阅读----读SSTable">
+<meta property="og:url" content="http://llf333.github.io/2022/10/31/leveldb_3Tables/index.html">
+<meta property="og:site_name" content="llf333">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="http://llf333.github.io/2022/10/31/leveldb_3Tables/cache.png">
+<meta property="og:image" content="http://llf333.github.io/2022/10/31/leveldb_3Tables/sstable_format.png">
+<meta property="og:image" content="http://llf333.github.io/2022/10/31/leveldb_3Tables/footer.png">
+<meta property="og:image" content="http://llf333.github.io/2022/10/31/leveldb_3Tables/data&index_block.png">
+<meta property="og:image" content="http://llf333.github.io/2022/10/31/leveldb_3Tables/filter_block.png">
+<meta property="og:image" content="http://llf333.github.io/2022/10/31/leveldb_3Tables/memtable_Encode.png">
+<meta property="article:published_time" content="2022-10-31T13:50:09.000Z">
+<meta property="article:modified_time" content="2022-10-31T14:12:24.944Z">
+<meta property="article:author" content="llf333">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://llf333.github.io/2022/10/31/leveldb_3Tables/cache.png">
+
+<link rel="canonical" href="http://llf333.github.io/2022/10/31/leveldb_3Tables/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'en'
+  };
+</script>
+
+  <title>leveldb源码阅读----读SSTable | llf333</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">llf333</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories" rel="section"><i class="fa fa-th fa-fw"></i>Categories</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="en">
+    <link itemprop="mainEntityOfPage" href="http://llf333.github.io/2022/10/31/leveldb_3Tables/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/llf.jpg">
+      <meta itemprop="name" content="llf333">
+      <meta itemprop="description" content="Every man is the master of his own fortune.">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="llf333">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          leveldb源码阅读----读SSTable
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+              
+
+              <time title="Created: 2022-10-31 21:50:09 / Modified: 22:12:24" itemprop="dateCreated datePublished" datetime="2022-10-31T21:50:09+08:00">2022-10-31</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/C/" itemprop="url" rel="index"><span itemprop="name">C++</span></a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Database/" itemprop="url" rel="index"><span itemprop="name">Database</span></a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <hr>
+<span id="more"></span>
+
+<h1 id="leveldb源码阅读—-读SSTable"><a href="#leveldb源码阅读—-读SSTable" class="headerlink" title="leveldb源码阅读—-读SSTable"></a>leveldb源码阅读—-读SSTable</h1><p>续上篇博客介绍了leveldb在Get时，会通过Version维护的元数据，具体找到一个SSTable来进行查找。这里就想通过这个Get过程，来介绍一下读SSTable时会用到的Cache组件以及SSTable的组成结构。由于之前只介绍了跳表，因此文章结尾顺便也对MemTable作出了补充说明。</p>
+<h2 id="Cache"><a href="#Cache" class="headerlink" title="Cache"></a>Cache</h2><h3 id="TableCache"><a href="#TableCache" class="headerlink" title="TableCache"></a>TableCache</h3><p>在总的VersionSet类中，维护了一个table_cache_，该变量的作用就是一个缓冲区，将打开的SSTable文件读入缓冲区后进行查找。Version中的Get函数便调用了了该table_cache内部的Get函数。这里设计到的类比较多，就不详细地通过赋源码的方式进行说明，我简单画了个图，来说明各个设计到的类的关系。</p>
+<img src="/2022/10/31/leveldb_3Tables/cache.png">
+
+
+
+<p>下面介绍一下SSTable查找一个key-value过程的调用链。</p>
+<p>从table_cache_的Get出发，核心逻辑就是<code>FindTable</code>以及<code>InternalGet</code>，<code>FindTable</code>的功能是打开ldb文件，解析出data block以及index block然后加载到内部缓存中，<code>InternalGet</code>则是在内部缓存中完成查找。</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="function">Status <span class="title">TableCache::Get</span><span class="params">(<span class="type">const</span> ReadOptions&amp; options, <span class="type">uint64_t</span> file_number,</span></span></span><br><span class="line"><span class="params"><span class="function">                       <span class="type">uint64_t</span> file_size, <span class="type">const</span> Slice&amp; k, <span class="type">void</span>* arg,</span></span></span><br><span class="line"><span class="params"><span class="function">                       <span class="type">void</span> (*handle_result)(<span class="type">void</span>*, <span class="type">const</span> Slice&amp;,</span></span></span><br><span class="line"><span class="params"><span class="function">                                             <span class="type">const</span> Slice&amp;))</span> </span>&#123;</span><br><span class="line">  Cache::Handle* handle = <span class="literal">nullptr</span>;</span><br><span class="line">  Status s = <span class="built_in">FindTable</span>(file_number, file_size, &amp;handle);<span class="comment">// 确保SSTable已经加载到Cache中</span></span><br><span class="line">  <span class="keyword">if</span> (s.<span class="built_in">ok</span>()) &#123;</span><br><span class="line">    Table* t = <span class="built_in">reinterpret_cast</span>&lt;TableAndFile*&gt;(cache_-&gt;<span class="built_in">Value</span>(handle))-&gt;table;<span class="comment">// LRUCache中的LRUhandle的value本质类型是TableAndFile</span></span><br><span class="line">    s = t-&gt;<span class="built_in">InternalGet</span>(options, k, arg, handle_result);<span class="comment">// 用Table的接口进行查找key-value</span></span><br><span class="line">    cache_-&gt;<span class="built_in">Release</span>(handle);</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">return</span> s;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>让我们更深一步看<code>FindTable</code>是如何工作的，先是<code>cache_-&gt;Lookup</code>，看看想要的文件是否已经加载到缓存中；如果不在，则通过<code>env</code>提供的接口打开文件，然后通过<code>Table::Open</code>解析文件并加载到临时变量中，最后调用<code>cache_-&gt;Inser</code>，将解析后的结果载入缓存。</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br></pre></td><td class="code"><pre><span class="line"><span class="function">Status <span class="title">TableCache::FindTable</span><span class="params">(<span class="type">uint64_t</span> file_number, <span class="type">uint64_t</span> file_size,</span></span></span><br><span class="line"><span class="params"><span class="function">                             Cache::Handle** handle)</span> </span>&#123;</span><br><span class="line">  Status s;</span><br><span class="line">  <span class="type">char</span> buf[<span class="built_in">sizeof</span>(file_number)];</span><br><span class="line">  <span class="built_in">EncodeFixed64</span>(buf, file_number);</span><br><span class="line">  <span class="function">Slice <span class="title">key</span><span class="params">(buf, <span class="keyword">sizeof</span>(buf))</span></span>;</span><br><span class="line">  *handle = cache_-&gt;<span class="built_in">Lookup</span>(key);<span class="comment">// 先看看想要的文件是否已经加载到缓存中</span></span><br><span class="line">  <span class="keyword">if</span> (*handle == <span class="literal">nullptr</span>) &#123;</span><br><span class="line">    <span class="comment">// ldb和sst都是SSTable文件的有效后缀？ 那为什么要分两种---只是新版本的源码扩展名为“.ldb”，同时向下兼容，支持老版本的扩展名“.sst”</span></span><br><span class="line">    std::string fname = <span class="built_in">TableFileName</span>(dbname_, file_number);</span><br><span class="line">    RandomAccessFile* file = <span class="literal">nullptr</span>;</span><br><span class="line">    Table* table = <span class="literal">nullptr</span>;</span><br><span class="line">    s = env_-&gt;<span class="built_in">NewRandomAccessFile</span>(fname, &amp;file); <span class="comment">// 打开文件</span></span><br><span class="line">    <span class="keyword">if</span> (!s.<span class="built_in">ok</span>()) &#123;</span><br><span class="line">      std::string old_fname = <span class="built_in">SSTTableFileName</span>(dbname_, file_number);</span><br><span class="line">      <span class="keyword">if</span> (env_-&gt;<span class="built_in">NewRandomAccessFile</span>(old_fname, &amp;file).<span class="built_in">ok</span>()) &#123;</span><br><span class="line">        s = Status::<span class="built_in">OK</span>();</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">// 根据file打开文件并解析，加载到table中</span></span><br><span class="line">    <span class="keyword">if</span> (s.<span class="built_in">ok</span>()) &#123;</span><br><span class="line">      s = Table::<span class="built_in">Open</span>(options_, file, file_size, &amp;table);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (!s.<span class="built_in">ok</span>()) &#123;</span><br><span class="line">      <span class="built_in">assert</span>(table == <span class="literal">nullptr</span>);</span><br><span class="line">      <span class="keyword">delete</span> file;</span><br><span class="line">      <span class="comment">// We do not cache error results so that if the error is transient,</span></span><br><span class="line">      <span class="comment">// or somebody repairs the file, we recover automatically.</span></span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">      TableAndFile* tf = <span class="keyword">new</span> TableAndFile;</span><br><span class="line">      tf-&gt;file = file;</span><br><span class="line">      tf-&gt;table = table;</span><br><span class="line">       <span class="comment">// key是文件号的编码值</span></span><br><span class="line">      *handle = cache_-&gt;<span class="built_in">Insert</span>(key, tf, <span class="number">1</span>, &amp;DeleteEntry);</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">return</span> s;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>对于<code>env</code>相关函数想在之后单开一篇博客来进行阅读讲解。<code>Table::Open</code>这里不就展开说明，在对SSTable的文件结构了解后应该显而易见。因此这里就只借<code>cache_-&gt;Lookup</code>函数和<code>cache_-&gt;Insert</code>函数来对<code>SharedLRUCache</code>和<code>LRUCache</code>来进行展开介绍。</p>
+<hr>
+<h3 id="SharedLRUCache"><a href="#SharedLRUCache" class="headerlink" title="SharedLRUCache"></a>SharedLRUCache</h3><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">class</span> <span class="title class_">ShardedLRUCache</span> : <span class="keyword">public</span> Cache &#123;</span><br><span class="line">    <span class="keyword">private</span>:</span><br><span class="line">    LRUCache shard_[kNumShards];</span><br><span class="line">    port::Mutex id_mutex_;</span><br><span class="line">    <span class="type">uint64_t</span> last_id_;</span><br><span class="line">    </span><br><span class="line">    ···</span><br><span class="line">        </span><br><span class="line">    <span class="keyword">public</span>:</span><br><span class="line">    <span class="comment">// 根据之前的调用可知，value的类型其实是TableAndFile* ，内部包含了env的文件和一个table</span></span><br><span class="line">    <span class="function">Handle* <span class="title">Insert</span><span class="params">(<span class="type">const</span> Slice&amp; key, <span class="type">void</span>* value, <span class="type">size_t</span> charge,</span></span></span><br><span class="line"><span class="params"><span class="function">                   <span class="type">void</span> (*deleter)(<span class="type">const</span> Slice&amp; key, <span class="type">void</span>* value))</span> <span class="keyword">override</span> </span>&#123;</span><br><span class="line">        <span class="type">const</span> <span class="type">uint32_t</span> hash = <span class="built_in">HashSlice</span>(key);</span><br><span class="line">        <span class="keyword">return</span> shard_[<span class="built_in">Shard</span>(hash)].<span class="built_in">Insert</span>(key, hash, value, charge, deleter);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="function">Handle* <span class="title">Lookup</span><span class="params">(<span class="type">const</span> Slice&amp; key)</span> <span class="keyword">override</span> </span>&#123;</span><br><span class="line">        <span class="type">const</span> <span class="type">uint32_t</span> hash = <span class="built_in">HashSlice</span>(key);</span><br><span class="line">        <span class="keyword">return</span> shard_[<span class="built_in">Shard</span>(hash)].<span class="built_in">Lookup</span>(key, hash);</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    ···</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p><code>SharedLRUCache</code>组成比较简单，它就是一个LRUCache的封装，为什么要进行这样的封装呢？原因很简单，因为levelDB是多线程的，每个线程如果直接访问Cache的时候都会锁住。为了多线程访问，尽可能快速，减少锁开销，对外封装成ShardedLRUCache访问，其内部有16个LRUCache。查找Key时首先计算key属于哪一个分片，<strong>需要注意的是，这个key是文件编号，是对Cache中存各个文件的一个key，而不是user想要查找的那个key-value的那个key</strong>，分片的计算方法是取32位hash值的高4位，然后在相应的LRUCache中进行查找，这样就大大减少了多线程的访问锁的开销。<strong>这种设计思路类似cmu15445中Lab1的Parallel Buffer Pool的思路。</strong></p>
+<hr>
+<h3 id="LRUCache"><a href="#LRUCache" class="headerlink" title="LRUCache"></a>LRUCache</h3><p>在最开头给了个图，里面说明了LRUCache中的链表每个元素类型是LRUHandle，其实LRUHandle这个类就说明了整个Cache里面存的到底是什么内容， 由LRUCache中Insert函数构造LRUHandle的过程可知，value的类型仍然是TableAndFile*，所以，<strong>Cache中存的最核心的东西就是SSTable经过解析后的一整个table（此处仅针对最初的Version中的table_cache_），value设计成void*也是使代码能够有更好的扩展性吧</strong>。在没细看代码前，我还认为也许存的是具体table的key-value。在前面对于key-value的具体查找，则交付给Table的内部查找接口完成。其实到这里，就已经把<strong>SSTable读key-value的全过程已经说明白了：无非就是先看缓存里面有没有对应的文件，有就直接查，没有就去磁盘中读，解析，然后加载到缓存中，再查</strong>。</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="function">Cache::Handle* <span class="title">LRUCache::Insert</span><span class="params">(<span class="type">const</span> Slice&amp; key, <span class="type">uint32_t</span> hash, <span class="type">void</span>* value,</span></span></span><br><span class="line"><span class="params"><span class="function">                                <span class="type">size_t</span> charge,</span></span></span><br><span class="line"><span class="params"><span class="function">                                <span class="type">void</span> (*deleter)(<span class="type">const</span> Slice&amp; key,</span></span></span><br><span class="line"><span class="params"><span class="function">                                                <span class="type">void</span>* value))</span> </span>&#123;</span><br><span class="line">    <span class="function">MutexLock <span class="title">l</span><span class="params">(&amp;mutex_)</span></span>;</span><br><span class="line">    LRUHandle* e =</span><br><span class="line">        <span class="built_in">reinterpret_cast</span>&lt;LRUHandle*&gt;(<span class="built_in">malloc</span>(<span class="built_in">sizeof</span>(LRUHandle) - <span class="number">1</span> + key.<span class="built_in">size</span>()));</span><br><span class="line">    e-&gt;value = value;</span><br><span class="line">    ···</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>最后将LRUCache和LRUHandle补充说明完，LRUCache和LRUHandle源码如下，其实基于LRU的Cache设计思路还是很简单，就不做过多说明了，就是两个链表，也可以是一个链表。其中，有一个点不理解，一个是LRUHandle为什么要有<code>bool in_cache</code>这个变量，有引用计数值不也能有同样的作用？另外，需要注意的是，<strong>LRUCache中除了有两个链表，还有一个Table存了所有数据</strong>。lru_链表意味着里面元素是可以牺牲的，in_use_链表意味着里面的元素不可牺牲。<strong>那Table是拿来干嘛的呢？Table中因为有所有的元素，这里用了一个hash的方法可以快速查找某一个LRUHandle，避免了查找时遍历两个链表的速度缓慢，也是一个优化。</strong></p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">struct</span> <span class="title class_">LRUHandle</span> &#123;</span><br><span class="line">  <span class="type">void</span>* value; <span class="comment">// 由LRUCache中Insert函数构造LRUHandle的过程可知，这个value的类型仍然是TableAndFile* ，内部包含了env的文件和一个table</span></span><br><span class="line">  <span class="built_in">void</span> (*deleter)(<span class="type">const</span> Slice&amp;, <span class="type">void</span>* value);</span><br><span class="line">  LRUHandle* next_hash;</span><br><span class="line">  LRUHandle* next;</span><br><span class="line">  LRUHandle* prev;</span><br><span class="line">  <span class="type">size_t</span> charge;  	 <span class="comment">// 占用cache空间数目，目前始终为1</span></span><br><span class="line">  <span class="type">size_t</span> key_length;</span><br><span class="line">  <span class="type">bool</span> in_cache;     <span class="comment">// 表示当前元素是否在cache中，false表示回收内存</span></span><br><span class="line">  <span class="type">uint32_t</span> refs;     <span class="comment">// 当引用计数为0时就要删除</span></span><br><span class="line">  <span class="type">uint32_t</span> hash;     <span class="comment">// Hash of key(); used for fast sharding and comparisons</span></span><br><span class="line">  <span class="type">char</span> key_data[<span class="number">1</span>];  <span class="comment">// key值，同样是末尾，意味着可变长</span></span><br><span class="line"></span><br><span class="line">  <span class="function">Slice <span class="title">key</span><span class="params">()</span> <span class="type">const</span> </span>&#123;</span><br><span class="line">    <span class="comment">// next is only equal to this if the LRU handle is the list head of an</span></span><br><span class="line">    <span class="comment">// empty list. List heads never have meaningful keys.</span></span><br><span class="line">    <span class="built_in">assert</span>(next != <span class="keyword">this</span>);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> <span class="built_in">Slice</span>(key_data, key_length);</span><br><span class="line">  &#125;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">class</span> <span class="title class_">LRUCache</span> &#123;</span><br><span class="line"> <span class="keyword">public</span>:</span><br><span class="line">  <span class="built_in">LRUCache</span>();</span><br><span class="line">  ~<span class="built_in">LRUCache</span>();</span><br><span class="line"></span><br><span class="line">  <span class="comment">// Separate from constructor so caller can easily make an array of LRUCache</span></span><br><span class="line">  <span class="function"><span class="type">void</span> <span class="title">SetCapacity</span><span class="params">(<span class="type">size_t</span> capacity)</span> </span>&#123; capacity_ = capacity; &#125;</span><br><span class="line"></span><br><span class="line">  <span class="comment">// Like Cache methods, but with an extra &quot;hash&quot; parameter.</span></span><br><span class="line">  <span class="function">Cache::Handle* <span class="title">Insert</span><span class="params">(<span class="type">const</span> Slice&amp; key, <span class="type">uint32_t</span> hash, <span class="type">void</span>* value,</span></span></span><br><span class="line"><span class="params"><span class="function">                        <span class="type">size_t</span> charge,</span></span></span><br><span class="line"><span class="params"><span class="function">                        <span class="type">void</span> (*deleter)(<span class="type">const</span> Slice&amp; key, <span class="type">void</span>* value))</span></span>;</span><br><span class="line">  <span class="function">Cache::Handle* <span class="title">Lookup</span><span class="params">(<span class="type">const</span> Slice&amp; key, <span class="type">uint32_t</span> hash)</span></span>;</span><br><span class="line">  <span class="function"><span class="type">void</span> <span class="title">Release</span><span class="params">(Cache::Handle* handle)</span></span>;</span><br><span class="line">  <span class="function"><span class="type">void</span> <span class="title">Erase</span><span class="params">(<span class="type">const</span> Slice&amp; key, <span class="type">uint32_t</span> hash)</span></span>;</span><br><span class="line">  <span class="function"><span class="type">void</span> <span class="title">Prune</span><span class="params">()</span></span>;</span><br><span class="line">  <span class="function"><span class="type">size_t</span> <span class="title">TotalCharge</span><span class="params">()</span> <span class="type">const</span> </span>&#123;</span><br><span class="line">    <span class="function">MutexLock <span class="title">l</span><span class="params">(&amp;mutex_)</span></span>;</span><br><span class="line">    <span class="keyword">return</span> usage_;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line"> <span class="keyword">private</span>:</span><br><span class="line">  <span class="function"><span class="type">void</span> <span class="title">LRU_Remove</span><span class="params">(LRUHandle* e)</span></span>;</span><br><span class="line">  <span class="function"><span class="type">void</span> <span class="title">LRU_Append</span><span class="params">(LRUHandle* list, LRUHandle* e)</span></span>;</span><br><span class="line">  <span class="function"><span class="type">void</span> <span class="title">Ref</span><span class="params">(LRUHandle* e)</span></span>;</span><br><span class="line">  <span class="function"><span class="type">void</span> <span class="title">Unref</span><span class="params">(LRUHandle* e)</span></span>;</span><br><span class="line">  <span class="function"><span class="type">bool</span> <span class="title">FinishErase</span><span class="params">(LRUHandle* e)</span> <span class="title">EXCLUSIVE_LOCKS_REQUIRED</span><span class="params">(mutex_)</span></span>;</span><br><span class="line"></span><br><span class="line">  <span class="comment">// Initialized before use.</span></span><br><span class="line">  <span class="type">size_t</span> capacity_;<span class="comment">//容量 超过这个容量后就要移除旧数据</span></span><br><span class="line"></span><br><span class="line">  <span class="comment">// mutex_ protects the following state.</span></span><br><span class="line">  <span class="keyword">mutable</span> port::Mutex mutex_;</span><br><span class="line">  <span class="function"><span class="type">size_t</span> usage_ <span class="title">GUARDED_BY</span><span class="params">(mutex_)</span></span>;<span class="comment">//当前cache使用量</span></span><br><span class="line"></span><br><span class="line">  <span class="comment">// Dummy head of LRU list.</span></span><br><span class="line">  <span class="comment">// 稳定状态下 所有元素都存在这个链表中 这个链表中元素refs一定等于1</span></span><br><span class="line">  <span class="function">LRUHandle lru_ <span class="title">GUARDED_BY</span><span class="params">(mutex_)</span></span>;</span><br><span class="line"></span><br><span class="line">  <span class="comment">// Dummy head of in-use list.</span></span><br><span class="line">  <span class="comment">// 当用户查询某条记录时 会将元素从lru_移动到这个链表中  这个链表中元素refs一定大于等于2  当使用完毕后</span></span><br><span class="line">  <span class="comment">// refs自减 然后将元素移回到lru_中</span></span><br><span class="line">  <span class="function">LRUHandle in_use_ <span class="title">GUARDED_BY</span><span class="params">(mutex_)</span></span>;</span><br><span class="line"></span><br><span class="line">  <span class="function">HandleTable table_ <span class="title">GUARDED_BY</span><span class="params">(mutex_)</span></span>;<span class="comment">/* 元素始终存在hashtable 只有从LRUCache删除时才会吧hashtable中元素删除 *</span></span><br><span class="line"><span class="comment">&#125;;</span></span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="SSTable"><a href="#SSTable" class="headerlink" title="SSTable"></a>SSTable</h2><p>上面只是粗略地说将SSTable读到table_cache_中，但没具体说是<strong>如何解析.ldb文件</strong>的，也没有说<strong>在Table中是如何具体查询一个key</strong>的。因此下面主要围绕这两点，来展开说明。</p>
+<hr>
+<h3 id="Format"><a href="#Format" class="headerlink" title="Format"></a>Format</h3><img src="/2022/10/31/leveldb_3Tables/sstable_format.png">
+
+<p>.ldb文件即SSTable的文件格式如上，它是一个<strong>自解释的文件。</strong>自解释文件的关键是什么，就是文件固定位置要有固定的内容，Footer就是位于文件尾一个固定字长（48字节）的一个区域。下面对上图做一个整体的解释：</p>
+<ul>
+<li><p>Footer：保存两个BlockHandler（包含两个内容，offset和size），存放Meta Index Block和Index Block的位置信息</p>
+</li>
+<li><p>Index Block：保存了每个Data Block的索引，存的内容实际是一些k-v，每个key大于等于对应的Data Block中最大的key，value为Data Block的Block Handler</p>
+</li>
+<li><p>Meta Index Block：保存Filter Block的索引，存法同上</p>
+</li>
+<li><p>Filter Block：存储该SSTable的过滤器，可以快速判断一个key是否在该SST中</p>
+</li>
+<li><p>Data Block：存储实际的k-v数据</p>
+</li>
+</ul>
+<p>代码中，Index Block、Meta Block和Data Block使用相同的数据结构，Footer和Filter Block有其自己的数据结构。下面具体说他们的数据结构：</p>
+<img src="/2022/10/31/leveldb_3Tables/footer.png">
+
+<p>Footer的大小固定为48个字节，offset和size的类型是varint64，一个varint64最大是10个字节，所以两个BlockHandler最长40个字节，不够就padding，最后加上8个字节的魔数。</p>
+<img src="/2022/10/31/leveldb_3Tables/data&index_block.png">
+
+
+
+<p>Index Block、Meta Block和Data Block如上图。因为SST中键都是排好序的，所以相邻的键很有可能包含相同的前缀，考虑到这个，Data Block做了优化，采用了<strong>前缀压缩</strong>，也就是后面一个键只需要记录一个Group中第一个键不同的部分，以及和第一个键相同部分的长度，这样就可以通过第一个键恢复出一个键，节省空间。LevelDB中每16个Kv是一个Group，并且还保存了每个Group的Offset，<strong>为什么要存这个Offset，有了这个Offset就可以快速定位每个Group第一个键的值，然后在查找值时，可以比较判断是否属于这个Group，以此为Check函数可以做一个Data Block内部的二分查找</strong>。对于Meta Block和Index Block，其内部存储的kv并未采用压缩，只需要设置shared size&#x3D;0即可，当然，查找过程同样可以使用二分。</p>
+<img src="/2022/10/31/leveldb_3Tables/filter_block.png">
+
+
+
+<p>Filter Block结构如上图，每个Filter Offset是4个字节，<strong>那最后一位是拿来干嘛的呢？主要是用于定位一个DataBlock其自身的filter的值</strong>。下面的KeyMayMatch用于判断一个Key是否在某个DataBlock中。</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="type">bool</span> <span class="title">FilterBlockReader::KeyMayMatch</span><span class="params">(<span class="type">uint64_t</span> block_offset, <span class="type">const</span> Slice&amp; key)</span> </span>&#123;</span><br><span class="line">  <span class="comment">// 找到对应DataBlock的filter的Index</span></span><br><span class="line">  <span class="type">uint64_t</span> index = block_offset &gt;&gt; base_lg_;</span><br><span class="line">  <span class="keyword">if</span> (index &lt; num_) &#123;</span><br><span class="line">      <span class="comment">// 每个offset四个字节</span></span><br><span class="line">    <span class="type">uint32_t</span> start = <span class="built_in">DecodeFixed32</span>(offset_ + index * <span class="number">4</span>);</span><br><span class="line">    <span class="type">uint32_t</span> limit = <span class="built_in">DecodeFixed32</span>(offset_ + index * <span class="number">4</span> + <span class="number">4</span>);</span><br><span class="line">    <span class="keyword">if</span> (start &lt;= limit &amp;&amp; limit &lt;= <span class="built_in">static_cast</span>&lt;<span class="type">size_t</span>&gt;(offset_ - data_)) &#123;</span><br><span class="line">      Slice filter = <span class="built_in">Slice</span>(data_ + start, limit - start);</span><br><span class="line">      <span class="keyword">return</span> policy_-&gt;<span class="built_in">KeyMayMatch</span>(key, filter);</span><br><span class="line">    &#125; <span class="keyword">else</span> <span class="keyword">if</span> (start == limit) &#123;</span><br><span class="line">      <span class="comment">// Empty filters do not match any keys</span></span><br><span class="line">      <span class="keyword">return</span> <span class="literal">false</span>;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">return</span> <span class="literal">true</span>;  <span class="comment">// Errors are treated as potential matches</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h3 id="Analyse-ldb-File"><a href="#Analyse-ldb-File" class="headerlink" title="Analyse .ldb File"></a>Analyse .ldb File</h3><p>当从TableCache中想要Get一个KV时，如果Table没有保存在Cache中，就需要解析对应的.ldb文件，这个逻辑已经在上面说过了。解析过程的代码主要在Table::Open中实现。</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br></pre></td><td class="code"><pre><span class="line"><span class="function">Status <span class="title">Table::Open</span><span class="params">(<span class="type">const</span> Options&amp; options, RandomAccessFile* file,</span></span></span><br><span class="line"><span class="params"><span class="function">                   <span class="type">uint64_t</span> size, Table** table)</span> </span>&#123;</span><br><span class="line">  *table = <span class="literal">nullptr</span>;</span><br><span class="line">  <span class="keyword">if</span> (size &lt; Footer::kEncodedLength) &#123;</span><br><span class="line">    <span class="keyword">return</span> Status::<span class="built_in">Corruption</span>(<span class="string">&quot;file is too short to be an sstable&quot;</span>);</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="type">char</span> footer_space[Footer::kEncodedLength];</span><br><span class="line">  Slice footer_input;</span><br><span class="line">  <span class="comment">// 读Footer</span></span><br><span class="line">  Status s = file-&gt;<span class="built_in">Read</span>(size - Footer::kEncodedLength, Footer::kEncodedLength,</span><br><span class="line">                        &amp;footer_input, footer_space);</span><br><span class="line">  <span class="keyword">if</span> (!s.<span class="built_in">ok</span>()) <span class="keyword">return</span> s;</span><br><span class="line"></span><br><span class="line">  Footer footer;</span><br><span class="line">  s = footer.<span class="built_in">DecodeFrom</span>(&amp;footer_input);</span><br><span class="line">  <span class="keyword">if</span> (!s.<span class="built_in">ok</span>()) <span class="keyword">return</span> s;</span><br><span class="line"></span><br><span class="line">  <span class="comment">// 读index block</span></span><br><span class="line">  BlockContents index_block_contents;</span><br><span class="line">  ReadOptions opt;</span><br><span class="line">  <span class="keyword">if</span> (options.paranoid_checks) &#123;</span><br><span class="line">    opt.verify_checksums = <span class="literal">true</span>;</span><br><span class="line">  &#125;</span><br><span class="line">  s = <span class="built_in">ReadBlock</span>(file, opt, footer.<span class="built_in">index_handle</span>(), &amp;index_block_contents);</span><br><span class="line"></span><br><span class="line">  <span class="keyword">if</span> (s.<span class="built_in">ok</span>()) &#123;</span><br><span class="line">    <span class="comment">// We&#x27;ve successfully read the footer and the index block: we&#x27;re</span></span><br><span class="line">    <span class="comment">// ready to serve requests.</span></span><br><span class="line">    <span class="comment">// 构建Table</span></span><br><span class="line">    Block* index_block = <span class="keyword">new</span> <span class="built_in">Block</span>(index_block_contents);</span><br><span class="line">    Rep* rep = <span class="keyword">new</span> Table::Rep;</span><br><span class="line">    rep-&gt;options = options;</span><br><span class="line">    rep-&gt;file = file;</span><br><span class="line">    rep-&gt;metaindex_handle = footer.<span class="built_in">metaindex_handle</span>();</span><br><span class="line">    rep-&gt;index_block = index_block;</span><br><span class="line">    rep-&gt;cache_id = (options.block_cache ? options.block_cache-&gt;<span class="built_in">NewId</span>() : <span class="number">0</span>);</span><br><span class="line">    rep-&gt;filter_data = <span class="literal">nullptr</span>;</span><br><span class="line">    rep-&gt;filter = <span class="literal">nullptr</span>;</span><br><span class="line">    *table = <span class="keyword">new</span> <span class="built_in">Table</span>(rep);</span><br><span class="line">    <span class="comment">// 读MetaBlock</span></span><br><span class="line">    <span class="comment">// 根据Footer读出MetaBlock，</span></span><br><span class="line">    <span class="comment">// 然后再根据Meta Block读对应FilterPolicy的Filter Block</span></span><br><span class="line">    <span class="comment">// 然后读Filter Block并保存到 rep-&gt;filter</span></span><br><span class="line">    (*table)-&gt;<span class="built_in">ReadMeta</span>(footer);</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">return</span> s;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h3 id="How-to-Get"><a href="#How-to-Get" class="headerlink" title="How to Get"></a>How to Get</h3><p>解析完.ldb，就可以支持查找了。主要逻辑于备注中。</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line"><span class="function">Status <span class="title">Table::InternalGet</span><span class="params">(<span class="type">const</span> ReadOptions&amp; options, <span class="type">const</span> Slice&amp; k, <span class="type">void</span>* arg,</span></span></span><br><span class="line"><span class="params"><span class="function">                          <span class="type">void</span> (*handle_result)(<span class="type">void</span>*, <span class="type">const</span> Slice&amp;,</span></span></span><br><span class="line"><span class="params"><span class="function">                                                <span class="type">const</span> Slice&amp;))</span> </span>&#123;</span><br><span class="line">  Status s;</span><br><span class="line">  Iterator* iiter = rep_-&gt;index_block-&gt;<span class="built_in">NewIterator</span>(rep_-&gt;options.comparator); <span class="comment">// 创建IndexBlock的iter</span></span><br><span class="line">  iiter-&gt;<span class="built_in">Seek</span>(k);<span class="comment">// 根据Index Block找到Key在哪个DataBlock中，内部是二分</span></span><br><span class="line">  <span class="keyword">if</span> (iiter-&gt;<span class="built_in">Valid</span>()) &#123;</span><br><span class="line">    Slice handle_value = iiter-&gt;<span class="built_in">value</span>(); </span><br><span class="line">    FilterBlockReader* filter = rep_-&gt;filter;</span><br><span class="line">    BlockHandle handle;</span><br><span class="line">    <span class="keyword">if</span> (filter != <span class="literal">nullptr</span> &amp;&amp; handle.<span class="built_in">DecodeFrom</span>(&amp;handle_value).<span class="built_in">ok</span>() &amp;&amp;</span><br><span class="line">        !filter-&gt;<span class="built_in">KeyMayMatch</span>(handle.<span class="built_in">offset</span>(), k)) &#123; <span class="comment">// 通过布隆过滤器判断DataBlock中是否有可能包含Key</span></span><br><span class="line">      <span class="comment">// Not found</span></span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">      Iterator* block_iter = <span class="built_in">BlockReader</span>(<span class="keyword">this</span>, options, iiter-&gt;<span class="built_in">value</span>());<span class="comment">// 创建对应DataBlock的iter</span></span><br><span class="line">      block_iter-&gt;<span class="built_in">Seek</span>(k);<span class="comment">// 查找Key，内部是二分</span></span><br><span class="line">      <span class="keyword">if</span> (block_iter-&gt;<span class="built_in">Valid</span>()) &#123;</span><br><span class="line">        (*handle_result)(arg, block_iter-&gt;<span class="built_in">key</span>(), block_iter-&gt;<span class="built_in">value</span>());</span><br><span class="line">      &#125;</span><br><span class="line">      s = block_iter-&gt;<span class="built_in">status</span>();<span class="comment">// 保存查找结果</span></span><br><span class="line">      <span class="keyword">delete</span> block_iter;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">if</span> (s.<span class="built_in">ok</span>()) &#123;</span><br><span class="line">    s = iiter-&gt;<span class="built_in">status</span>();</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">delete</span> iiter;</span><br><span class="line">  <span class="keyword">return</span> s;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>可以看到，关键的函数是Block::Iter的Seek函数，Seek函数的逻辑如下：</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="type">void</span> <span class="title">Seek</span><span class="params">(<span class="type">const</span> Slice&amp; target)</span> <span class="keyword">override</span> </span>&#123;</span><br><span class="line">    <span class="comment">// Binary search in restart array to find the last restart point</span></span><br><span class="line">    <span class="comment">// with a key &lt; target</span></span><br><span class="line">    <span class="comment">// left right指的是在第几个Group</span></span><br><span class="line">    <span class="type">uint32_t</span> left = <span class="number">0</span>;</span><br><span class="line">    <span class="type">uint32_t</span> right = num_restarts_ - <span class="number">1</span>;</span><br><span class="line">    <span class="type">int</span> current_key_compare = <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 优化1</span></span><br><span class="line">	<span class="comment">// 首先通过当前的record判断目标key所在的record是在当前record的前面（record &gt; target)还是后面（record &lt; target）</span></span><br><span class="line">    <span class="keyword">if</span> (<span class="built_in">Valid</span>()) &#123;</span><br><span class="line">      <span class="comment">// If we&#x27;re already scanning, use the current position as a starting</span></span><br><span class="line">      <span class="comment">// point. This is beneficial if the key we&#x27;re seeking to is ahead of the</span></span><br><span class="line">      <span class="comment">// current position.</span></span><br><span class="line">      current_key_compare = <span class="built_in">Compare</span>(key_, target);</span><br><span class="line">      <span class="keyword">if</span> (current_key_compare &lt; <span class="number">0</span>) &#123;</span><br><span class="line">        <span class="comment">// key_ is smaller than target</span></span><br><span class="line">        left = restart_index_;</span><br><span class="line">      &#125; <span class="keyword">else</span> <span class="keyword">if</span> (current_key_compare &gt; <span class="number">0</span>) &#123;</span><br><span class="line">        right = restart_index_;</span><br><span class="line">      &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        <span class="comment">// We&#x27;re seeking to the key we&#x27;re already at.</span></span><br><span class="line">        <span class="keyword">return</span>;</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    </span><br><span class="line">    <span class="keyword">while</span> (left &lt; right) &#123;</span><br><span class="line">      <span class="type">uint32_t</span> mid = (left + right + <span class="number">1</span>) / <span class="number">2</span>;</span><br><span class="line">      <span class="type">uint32_t</span> region_offset = <span class="built_in">GetRestartPoint</span>(mid);<span class="comment">// 找到mid所属Group的起点</span></span><br><span class="line">      <span class="type">uint32_t</span> shared, non_shared, value_length;</span><br><span class="line">      <span class="type">const</span> <span class="type">char</span>* key_ptr =</span><br><span class="line">          <span class="built_in">DecodeEntry</span>(data_ + region_offset, data_ + restarts_, &amp;shared,</span><br><span class="line">                      &amp;non_shared, &amp;value_length);</span><br><span class="line">      <span class="keyword">if</span> (key_ptr == <span class="literal">nullptr</span> || (shared != <span class="number">0</span>)) &#123;</span><br><span class="line">        <span class="built_in">CorruptionError</span>();</span><br><span class="line">        <span class="keyword">return</span>;</span><br><span class="line">      &#125;</span><br><span class="line">      <span class="function">Slice <span class="title">mid_key</span><span class="params">(key_ptr, non_shared)</span></span>;<span class="comment">// 求出所属Group起点的key的公共部分</span></span><br><span class="line">      <span class="keyword">if</span> (<span class="built_in">Compare</span>(mid_key, target) &lt; <span class="number">0</span>) &#123;</span><br><span class="line">        <span class="comment">// Key at &quot;mid&quot; is smaller than &quot;target&quot;.  Therefore all</span></span><br><span class="line">        <span class="comment">// blocks before &quot;mid&quot; are uninteresting.</span></span><br><span class="line">        left = mid;</span><br><span class="line">      &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        <span class="comment">// Key at &quot;mid&quot; is &gt;= &quot;target&quot;.  Therefore all blocks at or</span></span><br><span class="line">        <span class="comment">// after &quot;mid&quot; are uninteresting.</span></span><br><span class="line">        right = mid - <span class="number">1</span>;</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// We might be able to use our current position within the restart block.</span></span><br><span class="line">    <span class="comment">// This is true if we determined the key we desire is in the current block</span></span><br><span class="line">    <span class="comment">// and is after than the current key.</span></span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 优化2</span></span><br><span class="line">    <span class="comment">// 假如二分查找到的还原点是此时迭代器所在的那个restart_index_，并且迭代器当前指向的key&lt; target，那么可以从此时迭代器的位置开始向后遍历查找数据，</span></span><br><span class="line">    <span class="comment">// 这样快一些，而不是从这个recordGroup的第一个entry开始遍历。</span></span><br><span class="line">    <span class="built_in">assert</span>(current_key_compare == <span class="number">0</span> || <span class="built_in">Valid</span>());</span><br><span class="line">    <span class="type">bool</span> skip_seek = left == restart_index_ &amp;&amp; current_key_compare &lt; <span class="number">0</span>;</span><br><span class="line">    <span class="keyword">if</span> (!skip_seek) &#123;</span><br><span class="line">      <span class="built_in">SeekToRestartPoint</span>(left);</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// Linear search (within restart block) for first key &gt;= target</span></span><br><span class="line">    <span class="comment">// 最后进行线性搜索，直到知道第一个大于等于target的key，其中ParseNextKey起到向后移动一格并且将key_更新为当前key值得作用</span></span><br><span class="line">    <span class="keyword">while</span> (<span class="literal">true</span>) &#123;</span><br><span class="line">      <span class="keyword">if</span> (!<span class="built_in">ParseNextKey</span>()) &#123;</span><br><span class="line">        <span class="keyword">return</span>;</span><br><span class="line">      &#125;</span><br><span class="line">      <span class="keyword">if</span> (<span class="built_in">Compare</span>(key_, target) &gt;= <span class="number">0</span>) &#123;</span><br><span class="line">        <span class="keyword">return</span>;</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br></pre></td></tr></table></figure>
+
+<p>现在重新梳理一下<strong>leveldb的整个读流程</strong>，主要如下：</p>
+<ul>
+<li>读Memtable：跳表的查询</li>
+<li>读immutable：跳表的查询</li>
+<li>读SStable：<ul>
+<li>根据version元数据找到key属于哪个sst（二分）</li>
+<li>判断该sst是否在cache中，不在就从文件读到cache中</li>
+<li>然后在cache中查找</li>
+<li>先根据index block，找到key在哪个data block中（二分）</li>
+<li>利用布隆过滤器判断key是否在data block中</li>
+<li>如果可能在，就在data block中继续查（二分）</li>
+<li>返回结果。</li>
+</ul>
+</li>
+</ul>
+<hr>
+<h2 id="MemTable"><a href="#MemTable" class="headerlink" title="MemTable"></a>MemTable</h2><p>memtable是leveldb的一个存储组件，是一个内存型的数据结构，它需要满足 <code>sortedmap</code> 的基本要求：有序，快速查找。</p>
+<p>像STL中的<code>std::set</code> 就属于一个<code>sortedmap</code> ，其底层是用红黑树实现的，但<strong>memtable中使用的是跳表进行实现</strong>，跳表实现起来简单，当然也可以用户自定义更换，满足接口要求即可。</p>
+<p>由于在上篇博客已经详细介绍了SkipList的具体实现，所以这里主要谈两个东西，一个是memtable具体的结构，另一个是编码规则。</p>
+<hr>
+<h3 id="Data-Structure"><a href="#Data-Structure" class="headerlink" title="Data Structure"></a>Data Structure</h3><p>四个成员：</p>
+<ul>
+<li>table_：跳表</li>
+<li>arena_：内存管理器，本质上是跳表中的Arena</li>
+<li>ref_：引用计数器</li>
+<li>comparator_：key比较器</li>
+</ul>
+<p>支持的操作：</p>
+<ul>
+<li>Add：插入键对</li>
+<li>Get：查询键对</li>
+</ul>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">class</span> <span class="title class_">MemTable</span> &#123;</span><br><span class="line"> <span class="keyword">public</span>:</span><br><span class="line">  <span class="function"><span class="keyword">explicit</span> <span class="title">MemTable</span><span class="params">(<span class="type">const</span> InternalKeyComparator&amp; comparator)</span></span>;</span><br><span class="line"></span><br><span class="line">  <span class="built_in">MemTable</span>(<span class="type">const</span> MemTable&amp;) = <span class="keyword">delete</span>;</span><br><span class="line">  MemTable&amp; <span class="keyword">operator</span>=(<span class="type">const</span> MemTable&amp;) = <span class="keyword">delete</span>;</span><br><span class="line"></span><br><span class="line">  <span class="comment">//返回Arena中大致内存的使用量，为什么是大致的，因为在并发下使用的是std::memory_order_relaxed</span></span><br><span class="line">  <span class="function"><span class="type">size_t</span> <span class="title">ApproximateMemoryUsage</span><span class="params">()</span></span>; </span><br><span class="line">    </span><br><span class="line">  <span class="function"><span class="type">void</span> <span class="title">Ref</span><span class="params">()</span></span>;</span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="type">void</span> <span class="title">Unref</span><span class="params">()</span></span>;</span><br><span class="line"></span><br><span class="line">  <span class="function">Iterator* <span class="title">NewIterator</span><span class="params">()</span></span>;</span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="type">void</span> <span class="title">Add</span><span class="params">(SequenceNumber seq, ValueType type, <span class="type">const</span> Slice&amp; key,</span></span></span><br><span class="line"><span class="params"><span class="function">           <span class="type">const</span> Slice&amp; value)</span></span>;</span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="type">bool</span> <span class="title">Get</span><span class="params">(<span class="type">const</span> LookupKey&amp; key, std::string* value, Status* s)</span></span>;</span><br><span class="line"></span><br><span class="line"> <span class="keyword">private</span>:</span><br><span class="line">  <span class="keyword">friend</span> <span class="keyword">class</span> <span class="title class_">MemTableIterator</span>;</span><br><span class="line">  <span class="keyword">friend</span> <span class="keyword">class</span> <span class="title class_">MemTableBackwardIterator</span>;</span><br><span class="line">    </span><br><span class="line">  ~<span class="built_in">MemTable</span>();  <span class="comment">// 由于是私有的，所以只有党ref_=0时，才自动析构</span></span><br><span class="line"></span><br><span class="line">  <span class="keyword">typedef</span> SkipList&lt;<span class="type">const</span> <span class="type">char</span>*, KeyComparator&gt; Table;</span><br><span class="line"></span><br><span class="line">  KeyComparator comparator_;</span><br><span class="line">  <span class="type">int</span> refs_; <span class="comment">// 引用计数,ref_=0时自动析构</span></span><br><span class="line">  Arena arena_;</span><br><span class="line">  Table table_;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h3 id="How-to-encode"><a href="#How-to-encode" class="headerlink" title="How to encode"></a>How to encode</h3><p>MemTable 中保存的数据是 key 和 value 编码成的一个字符串，由四个部分组成，这里需要说明的是虽然存的是key和value，但是在跳表查询过程只用到了key。</p>
+<img src="/2022/10/31/leveldb_3Tables/memtable_Encode.png">
+
+
+
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="type">void</span> <span class="title">MemTable::Add</span><span class="params">(SequenceNumber s, ValueType type, <span class="type">const</span> Slice&amp; key,</span></span></span><br><span class="line"><span class="params"><span class="function">                   <span class="type">const</span> Slice&amp; value)</span> </span>&#123;</span><br><span class="line">  <span class="comment">// Format of an entry is concatenation of:</span></span><br><span class="line">  <span class="comment">//  key_size     : varint32 of internal_key.size()</span></span><br><span class="line">  <span class="comment">//  key bytes    : char[internal_key.size()]</span></span><br><span class="line">  <span class="comment">//  tag          : uint64((sequence &lt;&lt; 8) | type)</span></span><br><span class="line">  <span class="comment">//  value_size   : varint32 of value.size()</span></span><br><span class="line">  <span class="comment">//  value bytes  : char[value.size()]</span></span><br><span class="line">  <span class="type">size_t</span> key_size = key.<span class="built_in">size</span>();</span><br><span class="line">  <span class="type">size_t</span> val_size = value.<span class="built_in">size</span>();</span><br><span class="line">  <span class="type">size_t</span> internal_key_size = key_size + <span class="number">8</span>;</span><br><span class="line">  <span class="type">const</span> <span class="type">size_t</span> encoded_len = <span class="built_in">VarintLength</span>(internal_key_size) +</span><br><span class="line">                             internal_key_size + <span class="built_in">VarintLength</span>(val_size) +</span><br><span class="line">                             val_size;</span><br><span class="line">  <span class="comment">// 这里分配的是key所占的内存</span></span><br><span class="line">  <span class="type">char</span>* buf = arena_.<span class="built_in">Allocate</span>(encoded_len);</span><br><span class="line">  <span class="comment">// 编码</span></span><br><span class="line">  <span class="type">char</span>* p = <span class="built_in">EncodeVarint32</span>(buf, internal_key_size);</span><br><span class="line">  std::<span class="built_in">memcpy</span>(p, key.<span class="built_in">data</span>(), key_size);</span><br><span class="line">  p += key_size;</span><br><span class="line">  <span class="built_in">EncodeFixed64</span>(p, (s &lt;&lt; <span class="number">8</span>) | type);</span><br><span class="line">  p += <span class="number">8</span>;</span><br><span class="line">  p = <span class="built_in">EncodeVarint32</span>(p, val_size);</span><br><span class="line">  std::<span class="built_in">memcpy</span>(p, value.<span class="built_in">data</span>(), val_size);</span><br><span class="line">  <span class="built_in">assert</span>(p + val_size == buf + encoded_len);</span><br><span class="line">  table_.<span class="built_in">Insert</span>(buf);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="type">bool</span> <span class="title">MemTable::Get</span><span class="params">(<span class="type">const</span> LookupKey&amp; key, std::string* value, Status* s)</span> </span>&#123;</span><br><span class="line">  Slice memkey = key.<span class="built_in">memtable_key</span>();</span><br><span class="line">  <span class="function">Table::Iterator <span class="title">iter</span><span class="params">(&amp;table_)</span></span>;</span><br><span class="line">  iter.<span class="built_in">Seek</span>(memkey.<span class="built_in">data</span>());</span><br><span class="line">  <span class="keyword">if</span> (iter.<span class="built_in">Valid</span>()) &#123;</span><br><span class="line">    <span class="type">const</span> <span class="type">char</span>* entry = iter.<span class="built_in">key</span>();<span class="comment">// 这个key不是key，而是key+value的全部数据</span></span><br><span class="line">    <span class="type">uint32_t</span> key_length;</span><br><span class="line">    <span class="comment">// 解码后比较</span></span><br><span class="line">    <span class="type">const</span> <span class="type">char</span>* key_ptr = <span class="built_in">GetVarint32Ptr</span>(entry, entry + <span class="number">5</span>, &amp;key_length);</span><br><span class="line">    <span class="keyword">if</span> (comparator_.comparator.<span class="built_in">user_comparator</span>()-&gt;<span class="built_in">Compare</span>(</span><br><span class="line">            <span class="built_in">Slice</span>(key_ptr, key_length - <span class="number">8</span>), key.<span class="built_in">user_key</span>()) == <span class="number">0</span>) &#123;</span><br><span class="line">      <span class="comment">// Correct user key</span></span><br><span class="line">      <span class="type">const</span> <span class="type">uint64_t</span> tag = <span class="built_in">DecodeFixed64</span>(key_ptr + key_length - <span class="number">8</span>);</span><br><span class="line">      <span class="keyword">switch</span> (<span class="built_in">static_cast</span>&lt;ValueType&gt;(tag &amp; <span class="number">0xff</span>)) &#123;</span><br><span class="line">        <span class="keyword">case</span> kTypeValue: &#123;</span><br><span class="line">          Slice v = <span class="built_in">GetLengthPrefixedSlice</span>(key_ptr + key_length);</span><br><span class="line">          value-&gt;<span class="built_in">assign</span>(v.<span class="built_in">data</span>(), v.<span class="built_in">size</span>());</span><br><span class="line">          <span class="keyword">return</span> <span class="literal">true</span>;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">case</span> kTypeDeletion:</span><br><span class="line">          *s = Status::<span class="built_in">NotFound</span>(<span class="built_in">Slice</span>());</span><br><span class="line">          <span class="keyword">return</span> <span class="literal">true</span>;</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">return</span> <span class="literal">false</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+
+    </div>
+
+    
+    
+    
+        
+
+<div>
+<ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>Post author:  </strong>llf333
+  </li>
+  <li class="post-copyright-link">
+    <strong>Post link: </strong>
+    <a href="http://llf333.github.io/2022/10/31/leveldb_3Tables/" title="leveldb源码阅读----读SSTable">http://llf333.github.io/2022/10/31/leveldb_3Tables/</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>Copyright Notice:  </strong>All articles in this blog are licensed under <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="noopener" target="_blank"><i class="fab fa-fw fa-creative-commons"></i>BY-NC-SA</a> unless stating additionally. Please give credit to the original author when you use it elsewhere.
+</ul>
+</div>
+
+
+      <footer class="post-footer">
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2022/10/28/leveldb_WriteAndRead/" rel="prev" title="leveldb源码阅读----读写流程">
+      <i class="fa fa-chevron-left"></i> leveldb源码阅读----读写流程
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2022/11/04/leveldb_4/" rel="next" title="leveldb源码阅读----WAL和Compaction">
+      leveldb源码阅读----WAL和Compaction <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+
+
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#leveldb%E6%BA%90%E7%A0%81%E9%98%85%E8%AF%BB%E2%80%94-%E8%AF%BBSSTable"><span class="nav-number">1.</span> <span class="nav-text">leveldb源码阅读—-读SSTable</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#Cache"><span class="nav-number">1.1.</span> <span class="nav-text">Cache</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#TableCache"><span class="nav-number">1.1.1.</span> <span class="nav-text">TableCache</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#SharedLRUCache"><span class="nav-number">1.1.2.</span> <span class="nav-text">SharedLRUCache</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#LRUCache"><span class="nav-number">1.1.3.</span> <span class="nav-text">LRUCache</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#SSTable"><span class="nav-number">1.2.</span> <span class="nav-text">SSTable</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#Format"><span class="nav-number">1.2.1.</span> <span class="nav-text">Format</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Analyse-ldb-File"><span class="nav-number">1.2.2.</span> <span class="nav-text">Analyse .ldb File</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#How-to-Get"><span class="nav-number">1.2.3.</span> <span class="nav-text">How to Get</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#MemTable"><span class="nav-number">1.3.</span> <span class="nav-text">MemTable</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#Data-Structure"><span class="nav-number">1.3.1.</span> <span class="nav-text">Data Structure</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#How-to-encode"><span class="nav-number">1.3.2.</span> <span class="nav-text">How to encode</span></a></li></ol></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="llf333"
+      src="/images/llf.jpg">
+  <p class="site-author-name" itemprop="name">llf333</p>
+  <div class="site-description" itemprop="description">Every man is the master of his own fortune.</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives">
+          <span class="site-state-item-count">15</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories">
+          
+        <span class="site-state-item-count">3</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/llf333" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;llf333" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2022</span>
+  <span class="with-love">
+    <i class="fa-light fa-watermelon-slice"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">llf333</span>
+</div>
+
+<!--
+  <div class="powered-by">Powered by <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a>
+  </div>-->
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

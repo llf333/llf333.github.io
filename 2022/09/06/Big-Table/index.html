@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 6.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"llf333.github.io","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"always","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":true},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta property="og:type" content="article">
+<meta property="og:title" content="BigTable论文解读">
+<meta property="og:url" content="http://llf333.github.io/2022/09/06/Big-Table/index.html">
+<meta property="og:site_name" content="llf333">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="http://llf333.github.io/2022/09/06/Big-Table/data_model.png">
+<meta property="og:image" content="http://llf333.github.io/2022/09/06/Big-Table/data_model2.png">
+<meta property="og:image" content="http://llf333.github.io/2022/09/06/Big-Table/sparse.png">
+<meta property="og:image" content="http://llf333.github.io/2022/09/06/Big-Table/structure.png">
+<meta property="og:image" content="http://llf333.github.io/2022/09/06/Big-Table/Tablet.png">
+<meta property="og:image" content="http://llf333.github.io/2022/09/06/Big-Table/SStable.png">
+<meta property="article:published_time" content="2022-09-06T07:10:02.000Z">
+<meta property="article:modified_time" content="2022-09-06T12:45:13.741Z">
+<meta property="article:author" content="llf333">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://llf333.github.io/2022/09/06/Big-Table/data_model.png">
+
+<link rel="canonical" href="http://llf333.github.io/2022/09/06/Big-Table/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'en'
+  };
+</script>
+
+  <title>BigTable论文解读 | llf333</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">llf333</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories" rel="section"><i class="fa fa-th fa-fw"></i>Categories</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="en">
+    <link itemprop="mainEntityOfPage" href="http://llf333.github.io/2022/09/06/Big-Table/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/llf.jpg">
+      <meta itemprop="name" content="llf333">
+      <meta itemprop="description" content="Every man is the master of his own fortune.">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="llf333">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          BigTable论文解读
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+              
+
+              <time title="Created: 2022-09-06 15:10:02 / Modified: 20:45:13" itemprop="dateCreated datePublished" datetime="2022-09-06T15:10:02+08:00">2022-09-06</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Distributed-Systems/" itemprop="url" rel="index"><span itemprop="name">Distributed Systems</span></a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <hr>
+<span id="more"></span>
+
+<h2 id="DataModel"><a href="#DataModel" class="headerlink" title="DataModel"></a>DataModel</h2><img src="/2022/09/06/Big-Table/data_model.png">
+
+<p>BigTable在逻辑上本质上是用一个<strong>超大的Map</strong>进行存储所有数据的。是一个三维的map:（key_row,key_col,key_time）-&gt; value。如下图：</p>
+<img src="/2022/09/06/Big-Table/data_model2.png">
+
+
+
+<p>因此原文对BigTable给出了如下的定义：</p>
+<blockquote>
+<p>A Bigtable is a <strong>sparse</strong>, <strong>distributed</strong>, <strong>persistent multidimensional sorted map</strong>. The map is indexed by a row key, column key, and a timestamp; each value in the map is an uninterpreted array of bytes.</p>
+</blockquote>
+<p>这里如何理解”<strong>sparse</strong>“？（参考了康巴尔的解释）</p>
+<img src="/2022/09/06/Big-Table/sparse.png">
+
+<p>左边是标准的关系型数据库的数据模型：每条记录（行）的格式通常是固定的，包含所有的信息（当然也可以有null，但逻辑上排列紧凑）</p>
+<p>右边是BigTable的数据模型：允许有些行数据没有对应的列（逻辑上排序相对稀疏）</p>
+<hr>
+<h2 id="Structure"><a href="#Structure" class="headerlink" title="Structure"></a>Structure</h2><img src="/2022/09/06/Big-Table/structure.png" width="70%">
+
+<p>总体来说，Big Table主要依赖于两个组件：GFS和Chubby。下面具体描述一下Big Table的架构是怎么样的，以及为什么要依赖这两个组件，这两个组件在整个系统中扮演了什么样的地位。</p>
+<h3 id="Structure-1"><a href="#Structure-1" class="headerlink" title="Structure"></a>Structure</h3><p>如上图所示，BigTable主要由以下部分组成</p>
+<ul>
+<li><p>Client：通过读取chubby的tablet目录，获取元数据（METADATA）信息，直接和Tablet Server通信。</p>
+</li>
+<li><p>Master Server：Tablet分配、Tablet状态监控、负载均衡、GFS文件的垃圾回收、模式修改等。</p>
+</li>
+<li><p>Tablet Server：存储Tablet数据，每个Tablet包含了某个范围内的行的所有数据。</p>
+</li>
+</ul>
+<h3 id="Building-Blocks"><a href="#Building-Blocks" class="headerlink" title="Building Blocks"></a>Building Blocks</h3><ul>
+<li><p><strong>GFS</strong>：首先需要明确的是GFS是一个文件系统，而Big Table是一个存储系统（MapReduce是一种计算模型）。存储系统是干嘛的？通俗一点就是通过这个存储系统，我们能够根据某条数据记录获取该条数据记录的位置，并对它进行操作。<strong>BigTable就是将所有的数据存储在GFS中</strong>，<strong>而自身存储数据的位置信息</strong>，<strong>GFS为BigTable提供了数据容错和高性能</strong>。如上图所示，BIgTable中有许多Tablet Server，这个Tablet Server就是存储数据位置信息的，在文章中被定义为 “Tablet”。</p>
+</li>
+<li><p><strong>Chubby</strong>：由于没细看过Chubby的论文，这里就只能粗略地讲一下Chubby。<strong>chubby是一个高可用的、持久性的分布式锁服务，它提供一个名字空间，包含了目录和小文件。每个目录和文件可以被用作一个锁，针对文件的读和写操作都是原子的</strong>。Chubby是有5台服务器组成的，其中一台是master，使用chubby服务的客户端通过RPC与chubby的master进行通信，其他服务器只是Chubby的容错保证，使用的是Paxos算法。那BigTable用它做啥？总体来说就是需要它这个分布式锁的服务来维护BigTable的各种操作正常，以及监控一些状态。由于Chubby这个分布式锁有点老，这里就不细究了。</p>
+</li>
+</ul>
+<h3 id="Master"><a href="#Master" class="headerlink" title="Master"></a>Master</h3><p>Master是如何管理的呢？</p>
+<p>当一个Tablet服务器启动，它会在Chubby的一个指定目录下建立一个唯一的文件，并且获取该文件的独占锁。<strong>Master服务器则通过轮询Tablet服务器文件锁的状态</strong>来检测何时Tablet服务器不再为Tablet提供服务。<strong>Master服务器还会实时监控着整个服务器目录</strong>，因此Master服务器能够知道有新的Tablet服务器加入了。当Tablet服务器终止时（比如，集群的管理系统将该Tablet服务器的主机从集群中移除），它会尝试释放它持有的文件锁，这样一来，Master服务器就能尽快把Tablet分配到其它的Tablet服务器。</p>
+<h3 id="Tablet"><a href="#Tablet" class="headerlink" title="Tablet"></a>Tablet</h3><p>下面是Tablet的结构，就是一层层地往下找数据的位置（类似B+树），第一个是Chubby文件，存储了root tablet的位置信息，由于是chubby文件，也就意味着一旦chubby不可用，整个Big Table就丢失了root tablet，整个服务也就不可用了。第二个是RootTablet，它永远不会被分割，因此这个存储结构最多不会超过三层。最后一层就是Google SSTable文件，存储于GFS上。<strong>因此客户端找数据的过程，就是通过chubby先找到RootTablet的位置，然后去访问它，再通过RootTablet内的信息找到METADATA Tablet的位置，然后访问它，类似的最后找到SSTable的位置，去GFS中寻找最终数据</strong>。这个过程客户端当然也有<strong>缓存处理</strong>。</p>
+<p><strong>Tablet的持久化保证是通过WAL日志来实现的</strong>，WAL存储于GFS中，在Tablet Server重启时重放日志即可。</p>
+<img src="/2022/09/06/Big-Table/Tablet.png">
+
+<img src="/2022/09/06/Big-Table/SStable.png">
+
+
+    </div>
+
+    
+    
+    
+        
+
+<div>
+<ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>Post author:  </strong>llf333
+  </li>
+  <li class="post-copyright-link">
+    <strong>Post link: </strong>
+    <a href="http://llf333.github.io/2022/09/06/Big-Table/" title="BigTable论文解读">http://llf333.github.io/2022/09/06/Big-Table/</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>Copyright Notice:  </strong>All articles in this blog are licensed under <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="noopener" target="_blank"><i class="fab fa-fw fa-creative-commons"></i>BY-NC-SA</a> unless stating additionally. Please give credit to the original author when you use it elsewhere.
+</ul>
+</div>
+
+
+      <footer class="post-footer">
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2022/09/04/6.824_lab4/" rel="prev" title="6.824 Lab4">
+      <i class="fa fa-chevron-left"></i> 6.824 Lab4
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2022/09/11/cmu15-445_project0/" rel="next" title="cmu15-445/645 2022 Project0">
+      cmu15-445/645 2022 Project0 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+
+
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#DataModel"><span class="nav-number">1.</span> <span class="nav-text">DataModel</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Structure"><span class="nav-number">2.</span> <span class="nav-text">Structure</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#Structure-1"><span class="nav-number">2.1.</span> <span class="nav-text">Structure</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Building-Blocks"><span class="nav-number">2.2.</span> <span class="nav-text">Building Blocks</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Master"><span class="nav-number">2.3.</span> <span class="nav-text">Master</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Tablet"><span class="nav-number">2.4.</span> <span class="nav-text">Tablet</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="llf333"
+      src="/images/llf.jpg">
+  <p class="site-author-name" itemprop="name">llf333</p>
+  <div class="site-description" itemprop="description">Every man is the master of his own fortune.</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives">
+          <span class="site-state-item-count">15</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories">
+          
+        <span class="site-state-item-count">3</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/llf333" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;llf333" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2022</span>
+  <span class="with-love">
+    <i class="fa-light fa-watermelon-slice"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">llf333</span>
+</div>
+
+<!--
+  <div class="powered-by">Powered by <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a>
+  </div>-->
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>
