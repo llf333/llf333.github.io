@@ -1,0 +1,1061 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 6.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"llf333.github.io","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"always","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":true},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta property="og:type" content="article">
+<meta property="og:title" content="自底向上构建数据库——CMU15-445总结">
+<meta property="og:url" content="http://llf333.github.io/2022/12/01/cmu15445-course_note/index.html">
+<meta property="og:site_name" content="llf333">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="http://llf333.github.io/2022/12/01/cmu15445-course_note/architecture.png">
+<meta property="og:image" content="http://llf333.github.io/2022/12/01/cmu15445-course_note/heapfile_linked.png">
+<meta property="og:image" content="http://llf333.github.io/2022/12/01/cmu15445-course_note/heapfile_dictionary.png">
+<meta property="og:image" content="http://llf333.github.io/2022/12/01/cmu15445-course_note/tuple_storage.png">
+<meta property="og:image" content="http://llf333.github.io/2022/12/01/cmu15445-course_note/tuple_storage_log.png">
+<meta property="og:image" content="http://llf333.github.io/2022/12/01/cmu15445-course_note/largevalue1.png">
+<meta property="og:image" content="http://llf333.github.io/2022/12/01/cmu15445-course_note/largevalue2.png">
+<meta property="og:image" content="http://llf333.github.io/2022/12/01/cmu15445-course_note/bufferpool.png">
+<meta property="og:image" content="http://llf333.github.io/2022/12/01/cmu15445-course_note/polocy_clock.png">
+<meta property="og:image" content="http://llf333.github.io/2022/12/01/cmu15445-course_note/access_method.png">
+<meta property="og:image" content="http://llf333.github.io/2022/12/01/cmu15445-course_note/bplustree.png">
+<meta property="og:image" content="http://llf333.github.io/2022/12/01/cmu15445-course_note/bplustree_page2.png">
+<meta property="og:image" content="http://llf333.github.io/2022/12/01/cmu15445-course_note/bplustree_page.png">
+<meta property="og:image" content="http://llf333.github.io/2022/12/01/cmu15445-course_note/var_key.png">
+<meta property="og:image" content="http://llf333.github.io/2022/12/01/cmu15445-course_note/overflow_leafnodes.png">
+<meta property="og:image" content="http://llf333.github.io/2022/12/01/cmu15445-course_note/hash_agg.png">
+<meta property="og:image" content="http://llf333.github.io/2022/12/01/cmu15445-course_note/hash_join.png">
+<meta property="og:image" content="http://llf333.github.io/2022/12/01/cmu15445-course_note/bloom_filter.png">
+<meta property="og:image" content="http://llf333.github.io/2022/12/01/cmu15445-course_note/query_analyse.png">
+<meta property="og:image" content="http://llf333.github.io/2022/12/01/cmu15445-course_note/Iterator_Model.png">
+<meta property="og:image" content="http://llf333.github.io/2022/12/01/cmu15445-course_note/Materialization_Model.png">
+<meta property="og:image" content="http://llf333.github.io/2022/12/01/cmu15445-course_note/Vectorization_Model.png">
+<meta property="og:image" content="http://llf333.github.io/2022/12/01/cmu15445-course_note/expression_tree.png">
+<meta property="og:image" content="http://llf333.github.io/2022/12/01/cmu15445-course_note/intra-operator.png">
+<meta property="og:image" content="http://llf333.github.io/2022/12/01/cmu15445-course_note/architecture.png">
+<meta property="og:image" content="http://llf333.github.io/2022/12/01/cmu15445-course_note/conflict1.png">
+<meta property="og:image" content="http://llf333.github.io/2022/12/01/cmu15445-course_note/conflict2.png">
+<meta property="og:image" content="http://llf333.github.io/2022/12/01/cmu15445-course_note/schedule.png">
+<meta property="og:image" content="http://llf333.github.io/2022/12/01/cmu15445-course_note/intention_lock.png">
+<meta property="og:image" content="http://llf333.github.io/2022/12/01/cmu15445-course_note/T-O.png">
+<meta property="og:image" content="http://llf333.github.io/2022/12/01/cmu15445-course_note/T-O-unrecoverable.png">
+<meta property="og:image" content="http://llf333.github.io/2022/12/01/cmu15445-course_note/isolation_level.png">
+<meta property="og:image" content="http://llf333.github.io/2022/12/01/cmu15445-course_note/mvcc-example1.png">
+<meta property="og:image" content="http://llf333.github.io/2022/12/01/cmu15445-course_note/mvcc-example2.png">
+<meta property="og:image" content="http://llf333.github.io/2022/12/01/cmu15445-course_note/mvcc-storage1.png">
+<meta property="og:image" content="http://llf333.github.io/2022/12/01/cmu15445-course_note/mvcc-storage2.png">
+<meta property="og:image" content="http://llf333.github.io/2022/12/01/cmu15445-course_note/mvcc-storage3.png">
+<meta property="og:image" content="http://llf333.github.io/2022/12/01/cmu15445-course_note/mvcc-index1.png">
+<meta property="og:image" content="http://llf333.github.io/2022/12/01/cmu15445-course_note/mvcc-index2.png">
+<meta property="og:image" content="http://llf333.github.io/2022/12/01/cmu15445-course_note/recovery-shadow_page.png">
+<meta property="og:image" content="http://llf333.github.io/2022/12/01/cmu15445-course_note/checkpoint.png">
+<meta property="og:image" content="http://llf333.github.io/2022/12/01/cmu15445-course_note/Aries-CLR.png">
+<meta property="og:image" content="http://llf333.github.io/2022/12/01/cmu15445-course_note/checkpoint.png">
+<meta property="og:image" content="http://llf333.github.io/2022/12/01/cmu15445-course_note/Aries-Checkpoint1.png">
+<meta property="og:image" content="http://llf333.github.io/2022/12/01/cmu15445-course_note/Aries-Checkpoint2.png">
+<meta property="og:image" content="http://llf333.github.io/2022/12/01/cmu15445-course_note/Aries-Content.png">
+<meta property="article:published_time" content="2022-12-01T03:43:47.000Z">
+<meta property="article:modified_time" content="2022-12-01T03:55:18.129Z">
+<meta property="article:author" content="llf333">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://llf333.github.io/2022/12/01/cmu15445-course_note/architecture.png">
+
+<link rel="canonical" href="http://llf333.github.io/2022/12/01/cmu15445-course_note/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'en'
+  };
+</script>
+
+  <title>自底向上构建数据库——CMU15-445总结 | llf333</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">llf333</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories" rel="section"><i class="fa fa-th fa-fw"></i>Categories</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="en">
+    <link itemprop="mainEntityOfPage" href="http://llf333.github.io/2022/12/01/cmu15445-course_note/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/llf.jpg">
+      <meta itemprop="name" content="llf333">
+      <meta itemprop="description" content="Every man is the master of his own fortune.">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="llf333">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          自底向上构建数据库——CMU15-445总结
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+              
+
+              <time title="Created: 2022-12-01 11:43:47 / Modified: 11:55:18" itemprop="dateCreated datePublished" datetime="2022-12-01T11:43:47+08:00">2022-12-01</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/C/" itemprop="url" rel="index"><span itemprop="name">C++</span></a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Database/" itemprop="url" rel="index"><span itemprop="name">Database</span></a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <hr>
+<span id="more"></span>
+
+<h2 id="lecture1-基本介绍"><a href="#lecture1-基本介绍" class="headerlink" title="lecture1 基本介绍"></a>lecture1 基本介绍</h2><img src="/2022/12/01/cmu15445-course_note/architecture.png" width="20%">
+
+<h3 id="为什么我们需要数据库？-x2F-数据库的功能有哪些？"><a href="#为什么我们需要数据库？-x2F-数据库的功能有哪些？" class="headerlink" title="为什么我们需要数据库？&#x2F; 数据库的功能有哪些？"></a>为什么我们需要数据库？&#x2F; 数据库的功能有哪些？</h3><p>整体来说是对数据的管理，这些管理具体包括：实现更高效地读写数据（索引），实现并发地读写数据（事务），更安全地存储数据（使数据库有一定的容错能力），使这些功能适用性更广（不是一个场景就要重新造一个轮子）。</p>
+<h3 id="DataModel"><a href="#DataModel" class="headerlink" title="DataModel"></a>DataModel</h3><p>Relational、NoSql（k&#x2F;v，graph，document，column-family）等</p>
+<hr>
+<h2 id="lecture34-存储"><a href="#lecture34-存储" class="headerlink" title="lecture34 存储"></a>lecture34 存储</h2><p>这部分内容的脉络是：先说明了一般的面向磁盘的数据库是怎么存的，从文件到Page到Tuple，并额外讨论了large value如何存储，表信息如何存储(Catalog&#x2F;Meta Data)。最后再针对不同的WorkLoad提出不同的存储模型。</p>
+<p>大多数数据库的数据存储一般是存储在操作系统的文件系统上的（有的存储在裸磁盘上，会有性能的提升，但是很复杂），因为文件的特殊编码方式，数据文件对操作系统是透明的，对其他数据库系统也是透明的。并且大多数数据文件都是拆分成多个文件的，因为假如对一个大文件进行修复，则很麻烦，并且拆分后不会受到maxsize（以前的文件系统）的限制。这些文件本质上是一个个Page，每个Page里面可以存不同的内容，Page的设计交给程序员，后续的数据库系统设计都是基于这个Page的，也就是说数据库系统必须需要自编码&#x2F;解码这些文件，并且大多数系统每个Page里面只会存一类数据（方便组织？）。因此，数据库系统中设计了一个Disk Manager层，它的职责就是负责读写磁盘上对于文件对应数据的PAGE（内部有一些元数据），同时保持较好的空间和时间的局部性。数据文件在底层会有不同的组织形式，比较常见的是Page存放无序的HeapFile， 或者是有序的聚集索引（B树），还有一种是Hash File。</p>
+<h3 id="数据组织形式"><a href="#数据组织形式" class="headerlink" title="数据组织形式"></a>数据组织形式</h3><ul>
+<li><p>Heap File的组织形式</p>
+<p>链表形式：Heap File中有一个Header，存了连个指针，表示空闲的和占用的。这种方式很垃圾，因为每次找一个Page，我都需要遍历链表。</p>
+<img src="/2022/12/01/cmu15445-course_note/heapfile_linked.png" width="25%">
+
+<p>字典形式：Heap File中有一个字典，存放了pageid和page位置的映射，这种方式好。</p>
+<img src="/2022/12/01/cmu15445-course_note/heapfile_dictionary.png" width="20%">
+
+<p>映射关系的维护与Page的写，这一整个操作必须保证原子性。</p>
+</li>
+<li><p>Page的组织形式</p>
+<p>Page页大小的取舍：更大的页使得页表占用更小，可以使一些数据的分布更密集。但是小的页也有好处，比如向硬件的写入数据，假如硬件一个页4kb，那么4kb的写入是原子的，如果设置更大的页，则对写入的原子性就需要额外的操作。  </p>
+<p>Page里面有一个Header：存有Size、checksum，DBMSVersion，事务可见性等。</p>
+<p>组织形式有两种：Tuple Storage、Log Storage。</p>
+</li>
+<li><p>Tuple Storage形式，这样设计的目的主要是为了存储可变长的Tuple。定位一个Tuple所需要的信息就是Page Id（找到哪个文件的哪个页）和Slot Id（页中的具体位置）。</p>
+<img src="/2022/12/01/cmu15445-course_note/tuple_storage.png" width="30%">
+
+<p>Log Storage就是文件里面存的是操作本身，需要数据时，可以根据Log恢复出来。这里为了加速读性能，会对文件建索引（leveldb中，level1及以上层的文件的kv是不重复的，且含有索引，根据max和min进行二分），同时也可以加入布隆过滤器优化。</p>
+<img src="/2022/12/01/cmu15445-course_note/tuple_storage_log.png" width="30%">
+</li>
+<li><p>Tuple的组织形式：根据表结构定义。</p>
+<p>Large Value的存储方式：一个指针指向额外的page或者文件。</p>
+</li>
+</ul>
+<p>​															<img src="/2022/12/01/cmu15445-course_note/largevalue1.png"> <img src="/2022/12/01/cmu15445-course_note/largevalue2.png"></p>
+<ul>
+<li>CataLog一般也是存在一张系统表里。</li>
+</ul>
+<h3 id="计算机时无法精确表示数字，怎么办？"><a href="#计算机时无法精确表示数字，怎么办？" class="headerlink" title="计算机时无法精确表示数字，怎么办？"></a>计算机时无法精确表示数字，怎么办？</h3><p>因此假如数据库里面想要存储精确的数值，需要额外处理（最简单的方法就是使用字符串）。</p>
+<h3 id="存储模型"><a href="#存储模型" class="headerlink" title="存储模型"></a>存储模型</h3><p>行存储：优点：快速插入更新和删除，对查询整个Tuple的语句友好。缺点：对查询某个Tuple中的部分信息不友好。</p>
+<p>列存储：优点：对查询某个Tuple中的部分信息友好，并且存储可以压缩。缺点：但是读一个完整的Tuple很慢，插入更新和删除麻烦 。<br>（注意和数据模型不一样，数据模型一般指的是NoSql，Sql等）</p>
+<p>不同的workload：<br>OLTP（关心事务特性，包含写数据，SQL语句简单，一般是行存储）<br>OLAP（没有写数据要求，SQL语句复杂，需要查大量数据，Join很多表，不关心事务。对于OLAP，因为数据量很大，一般是列存储，因为读到内存的useless数据更少，一个Page因为压缩的存在还能存更多的数据）</p>
+<hr>
+<h2 id="lecture5-缓冲池"><a href="#lecture5-缓冲池" class="headerlink" title="lecture5 缓冲池"></a>lecture5 缓冲池</h2><h3 id="Buffer-Pool-Or-MMAP？"><a href="#Buffer-Pool-Or-MMAP？" class="headerlink" title="Buffer Pool Or MMAP？"></a>Buffer Pool Or MMAP？</h3><p>Buffer Pool有点像操作系统中的虚拟内存，理论上我们可以使用mmap系统调用来完成这一点，将某一页的内容映射到某个进程的地址空间里，然后对它读写，再通过sync写入磁盘，那为什么不这么做呢？（不是不能这么做，而是不推荐，如果这么做，就需要添加较多限制）</p>
+<p>本质原因是mmap是操作系统提供的很底层的一种数据缓存机制，它不知道你Page里面到底保存的是什么数据，内部有什么逻辑，有什么规律，因此很多针对数据库本身特点的优化没有办法做。而数据库自己是知道所有这些逻辑的，哪些Page应该继续缓存，哪些Page应该prefetch，哪些Page应该淘汰都了如指掌。</p>
+<p>从事务的隔离性来说，<strong>因为MMAP背后的Page读入、淘汰的机制对于上层应用来说是完全透明的，如果直接使用mmap，上层应用无法控制一个Page什么时候应该被淘汰出内存写回到底层文件，而一个Page如果数据库刚刚写了一半，这个时候操作系统是完全有可能把这个Page写回到本地到文件的，这样的话就破坏了事务的隔离性的。</strong>这个问题理论上也是有机制修复的，操作系统提供了一种机制(mlock)可以把某个特定的Page锁定在内存里面不要刷回磁盘，但是能够被锁定在内存里面的Page的数量是有上限的，并且这样使用就违背了初衷，我们使用mmap是想要设计更简单，这样用就变得复杂了。</p>
+<p>从优化来说，比如IO停顿这个现象，I&#x2F;O的速度相对CPU来说太慢了，如果CPU要因为I&#x2F;O速度太慢而只能停在那里等待I&#x2F;O而无法去有真正有意义的计算逻辑，这种现象叫做I&#x2F;O停顿。<strong>如果一个数据库系统在读它的叶子节点的页，B+树的叶子结点指向的页在地址上不是完全连续的，数据库系统知道这个结构的特点，因此可以做一些预读，当Query真正的需要某个Page数据的时候，这个Page以及被预读到内存里面了，从而避免了I&#x2F;O停顿。但mmap做不到这一点，因为它不知道Page里面是什么（mmap其实有预取，但是只能预取连续的内容）。</strong>也许你会说，我可以有一个专门的异步线程来预读数据进内存啊，理论上是可以的，但是这就又复杂了。</p>
+<h3 id="为什么需要Buffer-Pool？"><a href="#为什么需要Buffer-Pool？" class="headerlink" title="为什么需要Buffer Pool？"></a>为什么需要Buffer Pool？</h3><p>前面也说了，我们需要把磁盘中的数据读到内存中（冯诺依曼结构），因为内存的大小是有限的，因此需要换出换入操作，这便是Buffer Pool的工作。<br>同时它必OS更了解数据库里面的数据，可以设置自己的淘汰策略（LRU，LRU-K），可以避免将一些仍需要的页淘汰出内存（使用MMAP）。</p>
+<h3 id="Buffer-Pool的组成"><a href="#Buffer-Pool的组成" class="headerlink" title="Buffer Pool的组成"></a>Buffer Pool的组成</h3><p>若干个Frame，一个PageTable。每个页还需要一些元数据：Is_Dirty、PinCount。</p>
+<img src="/2022/12/01/cmu15445-course_note/bufferpool.png" width="60%">
+
+<h3 id="PAGE-DIRECTORY-和-PAGE-TABLE的区别？"><a href="#PAGE-DIRECTORY-和-PAGE-TABLE的区别？" class="headerlink" title="PAGE DIRECTORY 和 PAGE TABLE的区别？"></a>PAGE DIRECTORY 和 PAGE TABLE的区别？</h3><p>PAGE DIRECTORY是映射PAGE ID 到PAGE在DB FILES里的位置，这个是存在硬盘上的。必须持久化，因为数据库崩溃了我们需要找到Page在哪。<br>PAGE TABLE是维护PAGE ID到 PAGE 在BUFFER POOL的映射，这个是内存信息。可以不用持久化。</p>
+<h3 id="Latch-和-Lock的区别？"><a href="#Latch-和-Lock的区别？" class="headerlink" title="Latch 和 Lock的区别？"></a>Latch 和 Lock的区别？</h3><p>Lacth是更高层次的东西，比如对于事务、表、Tuple，针对的是数据库的对象。并且存在死锁。</p>
+<p>Lock则是针对内存中的某一个程序或者线程，需要程序员自己使用，相当于mutex，不允许死锁发生。</p>
+<h3 id="优化："><a href="#优化：" class="headerlink" title="优化："></a>优化：</h3><p>Multiple Buffer Pool：Frame可以量身定制；使用不同从Polocy；增大并行度，减少线程争抢一个Latch。（leveldb中有16个LRUCache）</p>
+<p>Pre-Fetching：减少IO停顿。</p>
+<p>Scan Sharing：它和查缓存不一样，如果2个QUERY要扫的页是差不多的，可以让第二个QUERY 先和第一个页共享那部分一起扫的页（采用添加游标的方式）。最后再分别扫不同的页。  </p>
+<p>By Pass：新建一个临时的Buffer Pool，全部读入，避免热点数据被刷走。</p>
+<p>O_DIRECT： 跳过OS自己的CACHE。</p>
+<h3 id="Polocies"><a href="#Polocies" class="headerlink" title="Polocies"></a>Polocies</h3><p>LRU：剔除最老的。</p>
+<p>Clock：LRU的近似算法，但并非精确剔除最老的。每走一圈ref变成0，如果已经是0了，则剔除。注意ref并不是引用次数，只能为1或者0。</p>
+<img src="/2022/12/01/cmu15445-course_note/polocy_clock.png" width="50%">
+
+<p>LRU-K：解决LRU的BUFFER POOL 污染问题。比如线程A依次访问Page12345，而线程B刚开始访问Page1，这时Page1可能会被线程A选择换出，说抽象点就是<strong>某个热点页面在偶然一个时间节点被其他大量仅访问了一次的页面所取代</strong>。因为仅访问1次就能替代别人，可能会造成“缓存污染”的问题，因此提出了LRU-K的概念。其核心思想就是将访问一次就能替代的“1”提升为”K”。<a target="_blank" rel="noopener" href="https://www.jianshu.com/p/c4e4d55706ff">LRU-K和2Q缓存算法介绍 - 简书 (jianshu.com)</a>：多维护一个队列，K次以上的Page加入到另一个高级的队列，优先淘汰掉低级的队列的页面。</p>
+<p>其他策略上的选择方案：</p>
+<ul>
+<li><p>自己单开一个Buffer Pool：Local polocy，避免污染。</p>
+</li>
+<li><p>Dirty Page的处理：取一个新页的时候，是选择No-Dirty的页直接替换，还是选择Dirty的页进行替换，选择前者可能把热门页剔除了，选择后者要承担写到磁盘的代价，这两点需要Trade off。针对写到磁盘的情况，我们可以开一个后台线程来定期把脏页写出，但不刷出Buffer Pool，这样就能优化下次剔除时的速度。</p>
+</li>
+</ul>
+<h3 id="数据库除了TUPLE的Buffer-Pool-还有什么Memory-Pool？"><a href="#数据库除了TUPLE的Buffer-Pool-还有什么Memory-Pool？" class="headerlink" title="数据库除了TUPLE的Buffer Pool 还有什么Memory Pool？"></a>数据库除了TUPLE的Buffer Pool 还有什么Memory Pool？</h3><p>比如要排序的时候会用到SORT BUFFER，在写LOG的时候会用到LOG BUFFER。</p>
+<h3 id="Buffer-Pool和OS的虚拟内存有什么区别？"><a href="#Buffer-Pool和OS的虚拟内存有什么区别？" class="headerlink" title="Buffer Pool和OS的虚拟内存有什么区别？"></a>Buffer Pool和OS的虚拟内存有什么区别？</h3><p>个人回答，未必准确：</p>
+<p>我认为，从基本实现和基本功能没有太多区别，基本实现都是通过页面的换入换出进行实现的，基本功能都是让有限的内存能运行更大的程序。</p>
+<p>但虚拟内存的侧重点应该是想要得到一个范围更大的地址空间，比如你只有2GB的内存，也就是说物理地址的寻址范围只有2GB，但是逻辑地址通过虚拟内存是可以让它大于2GB，更大的逻辑地址除了能够让一些占用较大内存的程序正常运行，从一个更大的层面来说，也能更好的发挥机器性能。</p>
+<p>而Buffer Pool除了能让大的数据库进行正常运行，它的另外一个侧重点就是能够更好管理数据库的数据，因为它更了解数据库的数据，或者说是更了解每个页的数据，这样它能通过一些特有策略来优化换页换出，还能提高数据库的性能，相对来说更专门化，更特有化。</p>
+<hr>
+<h2 id="lecture678-哈希表和树"><a href="#lecture678-哈希表和树" class="headerlink" title="lecture678 哈希表和树"></a>lecture678 哈希表和树</h2><p>接下来讨论的是两个东西，哈希表和树结构，属于Access Methods层。这里Access Method的含义并非单指索引，正如它的名字，它的作用 是提供一个方法来提高访问数据的效率，它有许多应用的地方如下：</p>
+<ul>
+<li>Internal Meta-data：维护数据库自己的一些元数据。</li>
+<li>Core Data Storage：维护数据库的数据，比如MySql的Innodb用B+树将数据存在叶子节点。</li>
+<li>Temporary Data Structure：比如执行一个Query，可以在运行时构建一个Hash表，用完就丢弃。</li>
+<li>Table Indexes：构建索引。</li>
+</ul>
+<img src="/2022/12/01/cmu15445-course_note/access_method.png" width="25%">
+
+<h3 id="Hash表主要关注什么？"><a href="#Hash表主要关注什么？" class="headerlink" title="Hash表主要关注什么？"></a>Hash表主要关注什么？</h3><p>一是Hash函数的选择，二是冲突之后的策略选择，两者没有关系，可以混搭。本质上是空间和时间之间的Trade Off，更大的空间能够得到更小的冲突率，哈希表能够更快。</p>
+<h3 id="静态Hash算法有哪些，动态Hash有哪些-区别是什么？"><a href="#静态Hash算法有哪些，动态Hash有哪些-区别是什么？" class="headerlink" title="静态Hash算法有哪些，动态Hash有哪些, 区别是什么？"></a>静态Hash算法有哪些，动态Hash有哪些, 区别是什么？</h3><p>静态：开放寻址法、Robin Hood Hash、Cuckoo Hash</p>
+<p>动态：拉链法（缺点是在某个链表过长时，查找时间复杂度就不是O(1)了）、Extendible hash、   Linear Hash</p>
+<p>区别在于静态Hash表需要提前知道大概有多少元素，在空间满后（也不定是空间满后，可能是达到一定容量），扩容时需要把以前的所有kv重新计算一下，这个成本是巨大的。但是动态Hash在插入操作时，也会发生扩容，这也设计到一些额外操作，效率肯定是比不上空间充裕的静态Hash。</p>
+<h3 id="哈希表一般不用作索引的原因？"><a href="#哈希表一般不用作索引的原因？" class="headerlink" title="哈希表一般不用作索引的原因？"></a>哈希表一般不用作索引的原因？</h3><p>哈希表只能完成点查找，做不到范围查找。</p>
+<h3 id="B-树的性质"><a href="#B-树的性质" class="headerlink" title="B+树的性质"></a>B+树的性质</h3><ul>
+<li><p>他是完美平衡的，所有叶子节点的深度一致。</p>
+</li>
+<li><p>每个非根节点至少是半满的。</p>
+</li>
+<li><p>每个内部节点有K个KEY，就会有K + 1个孩子。</p>
+</li>
+</ul>
+<img src="/2022/12/01/cmu15445-course_note/bplustree.png" width="50%">
+
+
+
+<p>实际的Page设计是像右边图那样的，这样假如value是变长的，仍然可以使用二分。</p>
+<p> <img src="/2022/12/01/cmu15445-course_note/bplustree_page2.png" width="30%"><img src="/2022/12/01/cmu15445-course_note/bplustree_page.png" width="30%"></p>
+<p>可变长key的页面设计：</p>
+<ul>
+<li>存储指向TUPLE属性的指针（比如key是VarChar，但是Node里面实际存的是Record ID，然后根据Record ID找到对应Tuple的Varchar）（80年代的，很慢）</li>
+<li>构建可变长度NODE（不好放进固定大小Frame的Buffer Pool）（不好）</li>
+<li>Padding 到max length（空间换时间）</li>
+<li>构建一个间接的KEY MAP。就存在叶子节点本身。如下：</li>
+</ul>
+<img src="/2022/12/01/cmu15445-course_note/var_key.png" width="50%">
+
+
+
+<h3 id="B树和B-树的区别"><a href="#B树和B-树的区别" class="headerlink" title="B树和B+树的区别"></a>B树和B+树的区别</h3><ul>
+<li><p>B树中，Value可以不放在叶子节点（不会有重复key）；而B+树只能放在叶子节点（会有重复key）。</p>
+<p>B树空间更小，为什么大家不用？调整节点时特别复杂，可能向下，可能向上，并发效率低。</p>
+</li>
+<li><p>最关键的是B+树的叶子节点通过指针相连起来</p>
+<ul>
+<li>可以实现范围查询、模糊查询</li>
+<li>B+树叶子节点的页面有些在磁盘上是顺序存储的，在读取时能减少随机IO</li>
+</ul>
+</li>
+</ul>
+<p>（B+树做不到包含关键词的查询，比如查询所有包含“abc”的Tuple。这个需要使用倒排索引。）</p>
+<h3 id="如果有重复的key怎么存？"><a href="#如果有重复的key怎么存？" class="headerlink" title="如果有重复的key怎么存？"></a>如果有重复的key怎么存？</h3><p>节点内有重复Key：</p>
+<ul>
+<li>一个key对应一个value集合</li>
+<li>直接存多份key和多个value</li>
+</ul>
+<p>不同节点之间有重复Key：</p>
+<ul>
+<li><p>每个key添加额外后缀（比如RecordId）使其变得唯一</p>
+</li>
+<li><p>Overflow处理： 使用Overflow Page</p>
+</li>
+</ul>
+<img src="/2022/12/01/cmu15445-course_note/overflow_leafnodes.png" width="50%">
+
+<h3 id="Node-Size的取舍"><a href="#Node-Size的取舍" class="headerlink" title="Node Size的取舍"></a>Node Size的取舍</h3><p>本质上是Leaf Scan和Root to Leaf的取舍。通常：</p>
+<p>HDD：1MB左右<br>SSD：10KB左右<br>Memory：512B左右</p>
+<p>为什么越慢的设备节点越大？因为慢的设备希望减少随机IO，希望多利用B+树的性质顺序IO读取一些节点（如果节点是页面大小就很舒服）。</p>
+<h3 id="B-树优化"><a href="#B-树优化" class="headerlink" title="B+树优化"></a>B+树优化</h3><ul>
+<li>不立即合并或者拆分，方法：后台合并拆分、读的时候才合并拆分、直接定期重建B+树。</li>
+<li>前缀压缩。（leveldb中的SST也有用）</li>
+<li>后缀截断，如果key的后缀信息没有区分度，则可以截断。</li>
+<li>批量插入。如果一开始你就知道要插的所有KEY，可以对他们先排序，然后对这些KEY去自底向上构建树，而不是一个个插入。这样性能最好。</li>
+<li>指针调整。如果一个PAGE已经在BUFFER POOL 里PINNED了，我们可以存直接的指针来代替原来存的PAGE ID。来避免去查Buffer Pool的PAGE TABLE查ADDRESS。</li>
+</ul>
+<h3 id="请说说什么是隐式索引，局部索引，覆盖索引，包含索引-index-include-column-？"><a href="#请说说什么是隐式索引，局部索引，覆盖索引，包含索引-index-include-column-？" class="headerlink" title="请说说什么是隐式索引，局部索引，覆盖索引，包含索引(index include column)？"></a>请说说什么是隐式索引，局部索引，覆盖索引，包含索引(index include column)？</h3><p>隐式索引比如建表的时候 写了unique, 或者primary key 会帮你自动建UNIQUE INDEX</p>
+<p>局部索引，就是对表的数据的子集建索引。</p>
+<p>覆盖索引，就是建联合索引来保证要QUERY的字段都在索引里有，而不用回表查主键索引</p>
+<p>包含索引，就是包含的COLUMN只在叶子节点有，而不会在搜索时被用到。其他同覆盖索引。</p>
+<p>函数索引&#x2F;表达式索引，就是对数据的函数结果建立索引。</p>
+<h3 id="Spin-Lock-x2F-Latch"><a href="#Spin-Lock-x2F-Latch" class="headerlink" title="Spin Lock&#x2F;Latch"></a>Spin Lock&#x2F;Latch</h3><p>自旋锁（SpinLock）是一种用于保护多线程共享资源的锁，与一般的互斥锁（mutex）不同之处在于，当自旋锁尝试获取锁的所有权时会以忙等（busy waiting）的形式不断的循环检查锁是否可用。如果使用mutex，会发生线程切换，开销较大，所以在多处理器环境中<strong>对持有锁时间较短的程序</strong>来说使用自旋锁代替一般的互斥锁往往能提高程序的性能。</p>
+<p>显然，<strong>单核CPU不适于使用自旋锁</strong>，这里的单核CPU指的是单核单线程的CPU，因为，在同一时间只有一个线程是处在运行状态，单核不是真正的并行，所以不挂起是不行的。同时，<strong>通常情况下最好不要在用户态使用自旋锁</strong>，因为你不知道在内核态里面会发生什么，比如说一个线程在忙等，刚好别人要释放锁的时候，时间片到了，内核把你这个线程切走了，之后切回来的时候，发现锁又被别人占有了，你又得忙等，其实这种情况内核态里面也会发生，本质上就是等太久了，在用户态使用自旋锁极有可能浪费CPU时间片重复尝试获取锁。在内核态中，自旋锁被广泛应用于内核态的中断上下文中。</p>
+<p>总结：一般在内核态下使用，一般用于持有锁时间较短的程序。</p>
+<h3 id="Latch-Crabbing"><a href="#Latch-Crabbing" class="headerlink" title="Latch Crabbing"></a>Latch Crabbing</h3><p>目的：多线程访问B+树。</p>
+<p>基本思想：先拿父节点的Latch，然后拿Child的Latch，然后对Child进行测试，如果父节点是Safe的，则释放父节点的Latch，这个Safe的意思是Child不会发生Split或者Merge。（有点类似螃蟹走路，一只脚伸过去了，如果是安全的，才把另一只脚也伸过来） </p>
+<p>读：拿的Read Lacth。增删：拿的Write Latch。</p>
+<p>优化1：大量节点拿Write Latch会严重影响并发度。因此可以做乐观假设，假设很少发生Split或者Merge，然后对每个节点拿Read Lacth，如果一直走到最后且都是Safe的，则执行操作；如果途中有不Safe的节点，则重新执行操作，拿Write Lacth。</p>
+<p>优化2：把PARENT节点的更新（记录到全局信息中）延迟到下次获取写锁的时候。</p>
+<p>上述讨论的都是B+树从上至下的遍历，因为它是单向的，所以并不存在死锁，当把叶子节点的遍历考虑进去就可能发生死锁了。</p>
+<p>解决方案是：一个线程没拿到锁，设置超时时间，如果超时就重新执行。（简单粗暴有效，如果设计成抢占的话，需要考虑特别多东西）</p>
+<hr>
+<h2 id="lecture9-10-排序（Sort）、聚合（Aggregations）和连接（Join）"><a href="#lecture9-10-排序（Sort）、聚合（Aggregations）和连接（Join）" class="headerlink" title="lecture9,10 排序（Sort）、聚合（Aggregations）和连接（Join）"></a>lecture9,10 排序（Sort）、聚合（Aggregations）和连接（Join）</h2><p>下面的Lecture介绍了一些算法主要围绕两点：</p>
+<ul>
+<li>使用Buffer</li>
+<li>最大化顺序IO</li>
+</ul>
+<p>以上两点归纳起来就是：<strong>分治</strong></p>
+<h3 id="外部归并排序"><a href="#外部归并排序" class="headerlink" title="外部归并排序"></a>外部归并排序</h3><ul>
+<li><p>为什么要用这个？因为内存有限，如果用快排，会涉及大量的随机IO。</p>
+</li>
+<li><p>描述一下有108个页，内存只能容下5页，如何做硬盘外排序？</p>
+<ul>
+<li><p>首先每次放进内存5个页（可以预取优化），对5个页就地排序，写到磁盘的一个文件里。这样最后会有22个文件。</p>
+</li>
+<li><p>下一次开始做K路归并，把4个文件放进去BUFFER里，然后流式读文件。还余下的一个文件的位置是用来保存输出。这样搞完之后。就还有22&#x2F;4 &#x3D; 6个文件。</p>
+</li>
+<li><p>下一步同样是归并，变成2个文件。最后合到一个有序文件。</p>
+</li>
+</ul>
+</li>
+<li><p>如果B+树的叶子节点的排序顺序与我们想要的排序顺序一致，则可以直接复用B+树。但前提是该B+树一定要是聚簇索引，因为聚簇索引的叶子节点顺序就是物理存储顺序，否则需要回表，这样仍然会有大量的随机IO。</p>
+</li>
+</ul>
+<h3 id="聚合"><a href="#聚合" class="headerlink" title="聚合"></a>聚合</h3><p>聚合是指：将多个属性值合并成为一个新的属性值。比如avg、max、min等</p>
+<p>聚合的两种实现方式：</p>
+<ul>
+<li>Sort：对所有数据进行排序后再处理，比如用于去重，但一般还是较少使用</li>
+<li>Hash：建立一个临时的哈希表再处理</li>
+</ul>
+<p>Hash方法：</p>
+<ul>
+<li>hash分区落盘——解决数据大的问题，进行分区</li>
+<li>Rehash——解决分区中一些碰撞的问题</li>
+</ul>
+<p>先用一个PAGE 流式读入数据， 根据hash函数1，把余下B-1个Page描述B-1个PARTITION的输出流落盘。（假设Buffer Pool能保存B个Page，一个用于<strong>输入</strong>）</p>
+<p>随后根据每个Partition文件，使用hash函数2来在内存里构建临时的哈希表，边构建边计算（每种聚合函数计算的方式不同，详情看下图右上角），最终输出总结果。</p>
+<img src="/2022/12/01/cmu15445-course_note/hash_agg.png" width="50%">
+
+
+
+<h3 id="连接"><a href="#连接" class="headerlink" title="连接"></a>连接</h3><p>连接是指：将多个表的数据根据某种关系组合起来，以获得我们想要的数据。</p>
+<p>inner join和outer join的区别：</p>
+<ul>
+<li>inner join 是默认的，实际效果是去两个表都有的部分，而不是交集的部分不予显示，可以获取到两表的交集部分。</li>
+<li>outer join跟表的顺序有关，某一个表的值完全显示，另一个表如果不匹配，则显示null。</li>
+</ul>
+<p>以下主要关注于：Inner equijoin（等值）。</p>
+<p>Join讨论两个东西：</p>
+<ul>
+<li><p>给上层Operator的结果输出形式：</p>
+<ul>
+<li>完整的Tuple——好处是不用再回磁盘去读数据，坏处是数据量可能特别大。</li>
+<li>Tuple的Rid——好处是数据量小，坏处是需要重回磁盘读数据。这种方法对列存储特别好，因为列存储需要根据列数据重组成一个行数据（Tuple），该方法可以延迟这个重组过程，减少重组的数据量。但现在很少用这门技术了，因为重拿数据可能代价是巨大的，可能要通过网络才拿得到。</li>
+</ul>
+</li>
+<li><p>算法复杂度：主要成本在于IO成本。假设Outer Table有M个页，m个Tuple，Inner Table有N个页，n个Tuple。</p>
+<ul>
+<li><p>Nested Join：嵌套暴力循环。</p>
+<ul>
+<li><p>对Outer Table的每个Tuple，遍历Inner Table的每个页，大量随机IO。</p>
+<p>Cost &#x3D; M+m<em>N*<em>（等式左边是读Outer Table的成本，右边是读Inner Table的成本）</em></em></p>
+<p>因为Tuple Number的数量级远大于Page Number，所以要<strong>选择更小的表作为Outer Table（驱动表）</strong>，使得Cost更小。</p>
+</li>
+<li><p>改进上一种，对两个表的每个页使用双重for循环，然后两个页中的Tuple再for循环，减少随机IO。</p>
+<p>Cost&#x3D;M+M*N</p>
+</li>
+<li><p>再改进上一种，假设Buffer Pool可以存B个页，那么在Buffer Pool中，一个页用于Inner Table，一个页用于输出，剩下B-2个页用于Outer Table。然后B-2个Outer Table的页依次对每个Inner Table的页遍历。这种做法将Outer Table分成更大的一块了，B-2个Out Table的页可以选择一些物理位置更近的页进行读取，进一步减少随机IO。<strong>思想就是，每次读Inner Table的一个页，尽可能多的使用它。</strong></p>
+<p>Cost&#x3D;M+M&#x2F;(B-2)*N</p>
+</li>
+<li><p>使用Index（可能是现成的，也有可能是新构建的）。双重循环，Inner Table按照Index叶子节点的顺序。</p>
+</li>
+</ul>
+</li>
+<li><p>Sort-Merge Join：分别对两个表进行排序，然后用双指针进行遍历输出。排序可以减少不必要的比较。</p>
+<p>Cost&#x3D;M*N + sort cost，sort cost可能比较大，这种方式在Join Key上已经建了索引，或者输出需要有序时被使用（复用排序结果）。</p>
+</li>
+<li><p>Hash Join：对Outer Table构建哈希表，然后对Inner Table的每个Tuple使用同样的哈希函数进行hash，然后在对应的hash partition中进行遍历。如果一次partition还是没法全部读进内存。可以使用第2个HASH函数。</p>
+<p>哈希表的key就是Join key，Value可以是Tuple，可以是Tuple的Rid，二者的Trade off见上文。</p>
+<p>优化：使用布隆过滤器（一个Bit Map，不可能出现假阴性），可以用于Inner Table进行hash后快速判断，自己的值在分区中是否存在相等的值。</p>
+</li>
+</ul>
+</li>
+</ul>
+<img src="/2022/12/01/cmu15445-course_note/hash_join.png" width="50%">
+
+<img src="/2022/12/01/cmu15445-course_note/bloom_filter.png" width="50%">
+
+<hr>
+<h2 id="lecture-11-12-13-14-查询执行和查询优化"><a href="#lecture-11-12-13-14-查询执行和查询优化" class="headerlink" title="lecture 11,12,13,14 查询执行和查询优化"></a>lecture 11,12,13,14 查询执行和查询优化</h2><h3 id="一个SQL语句是怎么样执行的"><a href="#一个SQL语句是怎么样执行的" class="headerlink" title="一个SQL语句是怎么样执行的"></a>一个SQL语句是怎么样执行的</h3><ul>
+<li><p>Parser：简要来说，就是解析Sql语句字符串，获得抽象语法树。</p>
+</li>
+<li><p>Binder：简要来说，就是解析语法树，根据表信息，将名字转换为内部ID，生成逻辑执行树（可以优化）。</p>
+</li>
+<li><p>Optimizer：通过成本模型进行查询优化，输出最终物理执行树（由Operator组成）。</p>
+<img src="/2022/12/01/cmu15445-course_note/query_analyse.png" width="50%"></li>
+</ul>
+<h3 id="逻辑计划和物理计划的区别是？"><a href="#逻辑计划和物理计划的区别是？" class="headerlink" title="逻辑计划和物理计划的区别是？"></a>逻辑计划和物理计划的区别是？</h3><p><strong>逻辑计划就是一些代数算子生成的一颗语法树</strong>。一个SQL ，通过这些代数组合是等价的性质，可以去做优化，这里的优化通过一些静态规则和启发函数，可以在不用对DB的内容知道的情况下做出。</p>
+<p><strong>物理计划就是具体调用底层存储引擎的哪些API去实际取数据</strong>。这里需要知道DB的数据分布，根据<strong>抽样统计</strong>得到的信息或者是已有的统计信息估算出更好的获取数据的方案。</p>
+<h3 id="一个物理执行计划怎么样运行的？"><a href="#一个物理执行计划怎么样运行的？" class="headerlink" title="一个物理执行计划怎么样运行的？"></a>一个物理执行计划怎么样运行的？</h3><p>三种执行树模型，下面主要谈谈各个模型的不同和优缺点：：</p>
+<p>Materialization Model和Vectorized Model都是建立于Iterator Model之上的，三种model的主要区别在于，每个Operator每次被调用时处理的<strong>数据规模不同</strong>。</p>
+<ul>
+<li><p>对于Iterator model中的<strong>每个Operator，内部需要实现一个Next函数，父Operator通过调用子Opertor的Next函数获取1条数据</strong>，然后进行处理，如图所示，整个执行树结构呈现出一个环的形式，这种方式的优点在于，Operator设计具有了一致性，系统扩展性较好；其次对于磁盘型数据库，从磁盘中读一条数据后，Iterator model能够在内存中尽可能地处理完（PipeLine）之后再抛弃数据，相比之下如果一次性读入很多数据进内存并处理很多数据，则BufferPool会频繁地进行换页，这就会造成大量的磁盘IO成本，这是难以接受的<strong>。</strong>缺点则在于，Iterator model在处理1条数据时，会调用大量的函数，函数上下文切换开销较大。</p>
+<img src="/2022/12/01/cmu15445-course_note/Iterator_Model.png" width="50%">
+</li>
+<li><p>对于Materialization Model（物化模型），其实也是类似Iterator Model，但它的Next函数是返回全部数据，避免的函数上下文切换开销，但很显然，这种方式在数据规模大的系统下效率并不高，<strong>主要应用于数据规模小的内存型数据库系统</strong>。</p>
+<img src="/2022/12/01/cmu15445-course_note/Materialization_Model.png" width="50%">
+</li>
+<li><p>Vectorized &#x2F; Batch Model （矢量模型），则是上述两种模型的综合，每次返回部分数据，<strong>按批次处理数据，可定制化能力较好，性能也较高</strong>。</p>
+<img src="/2022/12/01/cmu15445-course_note/Vectorization_Model.png" width="50%"></li>
+</ul>
+<h3 id="Operator的数据访问方式和谓词筛选"><a href="#Operator的数据访问方式和谓词筛选" class="headerlink" title="Operator的数据访问方式和谓词筛选"></a>Operator的数据访问方式和谓词筛选</h3><p>数据访问的方式：</p>
+<ul>
+<li><p>顺序扫描：数据库维护一个当前扫完的页的迭代器。</p>
+<p>优化：预取、Buffer Pool By Pass、维护统计信息（Zone Map）、延迟物化（对于列式存储，延后Tuple的组合，这里就是每个算子知道上层用不到哪些列，可以去更新OFFSET，让上层可以不用管他用不到的列信息）</p>
+</li>
+<li><p>索引扫描：优化器会挑选最适合的索引去走索引文件。当然如果走非聚簇索引，需要回表，这里有一个优化就是，把那些要回表的PAGE ID先存起来，然后把PAGE ID 排序，这样就可以顺序把需要的PAGE 都取好，读起来会比查一个找一个快很多。如果可以的话还可以走多个索引，然后在回表之前取交集，然后回表。</p>
+</li>
+</ul>
+<p>表达式筛选（谓词）的方式：</p>
+<p>​		数据库底层会构建一个EXPREESION TREE，然后最后依次取算看树根最后是不是TRUE。这种方法优点是比较灵活，但是缺点是比较慢。更好的做法是类似于JIT编译（比如1&#x3D;1这棵树，直接将它转换成CPU指令1&#x3D;1来判断），然后非常快的算出这些表达式。</p>
+<img src="/2022/12/01/cmu15445-course_note/expression_tree.png" width="50%">
+
+<h3 id="并发"><a href="#并发" class="headerlink" title="并发"></a>并发</h3><h4 id="Query"><a href="#Query" class="headerlink" title="Query"></a>Query</h4><p>并发场景：</p>
+<ul>
+<li>OLAP：对一个大的Query进行并发，主要是应对的是intra-query，主要目标是减少慢SQL的延迟。</li>
+<li>OLTP：同时对多个小的Query进行并发，主要应对的是inter-query，主要目标是提升系统的吞吐，减少总的延迟。</li>
+</ul>
+<blockquote>
+<p>intra：同一事物内部各部分之间。<br>inter：不同事物之间</p>
+</blockquote>
+<p>常见三种模型：多进程、进程池、多线程。</p>
+<p>线程和进程的优缺点：</p>
+<ul>
+<li>进程依赖OS调度和共享内存（为了防止多次读同一个页），优点是一个坏的进程不会影响整个程序，缺点是对CPU Cache局部性不友好。</li>
+<li>线程的优点是快，切换开销小，且可以自己管理调度，不需要共享内存，缺点是一个坏的线程会影响整个系统。</li>
+</ul>
+<p><strong>INTRA-QUERY并行是如何做的？</strong></p>
+<p>这里有两种方式，两种方式并非完全分开的，可以相互结合。</p>
+<ul>
+<li><p>一种是intra-operator, 一个Operator由多个worker执行，他是把一个数据集拆成一个个碎片，然后把相关的Func开启多个Worker作用在不同小碎片上，最后会有一个Exchange Operator来合并。这里的思想和Map Reduce很像。</p>
+<img src="/2022/12/01/cmu15445-course_note/intra-operator.png" width="50%">
+
+
+</li>
+<li><p>另一种是inter-operator，一个Operator由一个worker执行，其实就是利用Pipeline的思想，使得下面的结果一边出来，上面就可以提前处理，这2个属于不同的线程，类似于Producer Consumer。</p>
+</li>
+</ul>
+<p>总结：</p>
+<p>从大的方面来说，多个Query怎么并行？因为Query直接没有关联，一般是多线程多进程正常处理多个Query，无需关心互相的联系。</p>
+<p>从小的方面来说，一个Query内部的Operator怎么并行？两种，intra-operator和inter-operator。</p>
+<h4 id="IO"><a href="#IO" class="headerlink" title="IO"></a>IO</h4><p>如果不解决读磁盘数据缓慢的问题，开多线程或者多进程，反而是一种浪费资源，因为更多的CPU资源都在等IO了（IO停顿）。</p>
+<p>所以提出了IO并发。</p>
+<p>一种是多磁盘的并行，底层利用RAID，对数据库是透明的。</p>
+<p>另外一种就是做Partition，分为垂直切分，按照列切，列式存储。或者水平切分，类似分布式数据库里的SHARD。</p>
+<h3 id="逻辑计划的优化"><a href="#逻辑计划的优化" class="headerlink" title="逻辑计划的优化"></a>逻辑计划的优化</h3><p>逻辑计划可以在不知道DB的具体数据下进行，但还是需要知道各个表的形式（schema），比如投影下放就需要。</p>
+<ul>
+<li>谓词下放，可以提前缩小数据行范围，这样Join的时候量会少，会更快</li>
+<li>投影下放，这是提前缩小数据列范围，也是减少之后的空间使用，更多行可以放入内存，就会更快</li>
+<li>表达式重写，这里有很多例子，比如无用表达式删除，合并谓词，连接消除等</li>
+</ul>
+<h3 id="物理计划的优化"><a href="#物理计划的优化" class="headerlink" title="物理计划的优化"></a>物理计划的优化</h3><p>物理计划的查询主要基于成本估计模型。主要分为两个部分：如何计算成本？如何枚举出需要计算的计划？</p>
+<h4 id="如何计算成本？"><a href="#如何计算成本？" class="headerlink" title="如何计算成本？"></a>如何计算成本？</h4><p>第一种是基于<strong>统计信息</strong>的成本估计，数据库会维护各个表的一些统计信息（自动和手动）。</p>
+<p>比如常用的有列的选择度，就是列的Distinct值，比如一个表有50行，有一个性别列，性别列的选择度就是2，因为只能是男或者女，然后我们就可以大致估计该表中男的有多少Tuple(50&#x2F;2)。</p>
+<p>除此之外，如果我们假设数据分布是均匀的，还可以计算符合谓词条件的概率，计算谓词条件的概率是为了计算读了多少数据。比如范围: P(A &gt;&#x3D; a) &#x3D; (Amax − a)&#x2F;(Amax − Amin)。如果不是均匀的，则可以维护一个均匀的桶，这里其实是一道算法问题，就是给你每个KEY 的个数，你要装进10个桶，使得每个桶的SIZE 的差值最小。</p>
+<p>第二种是基于<strong>采样</strong>的成本估计。根据采样数据去判断谓词的选择度。这个选择度在JOIN TABLE时非常重要，我们希望外层表越小越好。</p>
+<h4 id="如何枚举出需要计算的计划？"><a href="#如何枚举出需要计算的计划？" class="headerlink" title="如何枚举出需要计算的计划？"></a>如何枚举出需要计算的计划？</h4><p>如果我们要Join N个表，那么所有可能的计划个数则是N的全排列，太多计划了，如果全部计算成本，则代价太大了，得不偿失，所以我们要选择出有代表性的计划。</p>
+<p><strong>单表查询</strong>关注两个方面：用哪个索引；先用哪个谓词（先剔除更多的数据）。一般是用启发式的规则去找可能使用的索引或者谓词顺序，并不用复杂的算法去筛选所有的计划。</p>
+<p><strong>多表查询</strong>则可以按照如下思路考虑：</p>
+<p>IBM最开始引入只考虑left-deep Join， 一是减少了大量的计划，二是为了更好的利用Pipeline，这样可以不用把Join出来的结果序列化到磁盘，可以流式的去做。</p>
+<p>接下来就可以枚举所有left-deep tree，枚举每个Join是用哪种Join算法，枚举每个表是用index scan 还是seq scan。 然后用动态规划的方式取算出最小的代价的方式。</p>
+<p>其实枚举的东西还是比较多，所以要Join的表很多时，我们可以使用遗传算法来找到较优解。</p>
+<hr>
+<h2 id="lecture-15-16-17-18-事务并发"><a href="#lecture-15-16-17-18-事务并发" class="headerlink" title="lecture 15,16,17,18 事务并发"></a>lecture 15,16,17,18 事务并发</h2><img src="/2022/12/01/cmu15445-course_note/architecture.png" width="20%">
+
+<h3 id="ACID"><a href="#ACID" class="headerlink" title="ACID"></a>ACID</h3><p>A就是原子性，事务里的操作要么全做成了，要么全没做成。这个背后的机制可以使用LOG来实现，也可以通过SHADOW PAGING来实现。</p>
+<p>C是一致性，也可以说是正确性，代表执行事务前如果状态是一致的，那么之后也是一致的，这里有两个不同的例子：</p>
+<ul>
+<li>比如数据库中有个表的某一列表示年龄，如果<strong>数据库要求</strong>年龄必须大于0（这一点可以由用户提供完整性约束），且执行事务之前，符合这个要求，那么在执行之后，也必须符合这个要求。需要注意，这里的一致性是数据库要求的，也就是ACID中的C一致性仅保证数据库级别约束的正确性，不保证业务上的约束（那是业务代码的校验来实现的），比如说我没有给数据库提供完整性约束，但业务上有完整性约束的要求，数据库在事务之前是符合约束的，但执行之后也想保证约束，这是做不到的，这超出了数据库的控制范围。</li>
+<li>如果有两个事务，一个事务执行之后，另一个事务必须得看到前一个事务的修改。这一点在单机数据库很容易做到，分布式数据库会重点关注这个问题（CAP的C）。</li>
+</ul>
+<p>I是隔离性，虽然有很多事务会并行在做，但是每个提交的事务自己看上去会是只有自己在做，就是并行的事务不会相互影响。</p>
+<p>D就是可持久性，所有事务提交的数据不应该丢失。</p>
+<h3 id="Conflict-Serializable"><a href="#Conflict-Serializable" class="headerlink" title="Conflict Serializable"></a>Conflict Serializable</h3><p>如果一个 schedule 和某个串行 schedule 冲突等价，则称该 schedule 是<strong>冲突可串行化（conflict serializable）</strong>的。</p>
+<p>什么叫冲突等价？一个schedule通过交换它的非冲突操作得到的schedule和它冲突等价。</p>
+<p><img src="/2022/12/01/cmu15445-course_note/conflict1.png" width="20%"><img src="/2022/12/01/cmu15445-course_note/conflict2.png" width="20%"></p>
+<p>为什么要研究这个东西？因为如果能证明一个并发事务的 schedule 是冲突可串行化的，则其执行效果和串行执行事务一样，绝对不会出现并发异常。如果能证明某个并发控制方案能让并发事务都生成冲突可串行化的 schedule，则说明该并发控制方案达到了可串行化隔离级别。判断通常是通过有向图是否有环进行判断。</p>
+<p>还有一种更高级的View Serializability，这种调度比Conflict Serializability 更加大。比如1个事务读后写A，另一个事务写A， 第三个事务也写A. 我们把第二个事务插在第一个事务的2个操作中，在Conflict Serializability是会判定有环的。但是只要第三个事务最后写A，其实是无影响的。结果和1,2,3顺序执行一致。这种定义因为太过复杂所以目前还没有数据库实现。</p>
+<img src="/2022/12/01/cmu15445-course_note/schedule.png" width="30%">
+
+<h3 id="二阶段锁——Two-Phase-Lock-悲观"><a href="#二阶段锁——Two-Phase-Lock-悲观" class="headerlink" title="二阶段锁——Two Phase Lock(悲观)"></a>二阶段锁——Two Phase Lock(悲观)</h3><p>逻辑：普通加锁没有意义，相当于串行执行 -&gt; 提出普通二阶段锁 -&gt; 级联回滚的问题 -&gt; 严格二阶段锁 -&gt; 死锁问题 -&gt; 死锁检测和死锁预防</p>
+<h4 id="二阶段锁"><a href="#二阶段锁" class="headerlink" title="二阶段锁"></a>二阶段锁</h4><p> 二阶段锁指的就是一个事务分为两个阶段，第一个阶段只能拿锁，第二个阶段只能还锁，也就是说一旦还了一个锁之后就不能再拿锁了。</p>
+<p>二阶段锁的问题就是会导致<strong>级联Abort</strong>：比如一个事务拿了锁A和B，对A进行了修改，然后还了锁A，另一个事务在这之后拿到了锁A，但是第一个事务被Abort了，那么第二个事务也得Abort，因为第二个事务对A的操作是基于第一个事务对A修改过后的值进行操作的，原则上第一个事务如果没commit的话，它的值是不允许被人使用的。</p>
+<h4 id="严格二阶段锁"><a href="#严格二阶段锁" class="headerlink" title="严格二阶段锁"></a>严格二阶段锁</h4><p>本质来说，级联回滚的问题在于第二个事务发生了脏读，读到了第一个事务的中间状态，因此可以采取<strong>严格二阶段锁</strong>：严格二阶段锁指的是，第一个阶段只能拿锁，而锁的释放是在commit之前一次性全部释放的。这样第二个事务想要拿到A的锁，必须等到第一个事务commit之后才能拿到。</p>
+<h4 id="死锁检测和死锁预防"><a href="#死锁检测和死锁预防" class="headerlink" title="死锁检测和死锁预防"></a>死锁检测和死锁预防</h4><p>如果采取严格两阶段锁，那么又可能导致<strong>死锁</strong>，比如说第一个事务先拿到锁A，第二个事务拿到锁B，这时候第一个事务想要拿锁B，第二个事务想要拿锁A，这就发生了死锁。所以需要进行<strong>死锁检测和死锁预防</strong>。</p>
+<p>死锁检测：锁管理器维护一个锁依赖图，如果事务1等待事。务2，则构建一条边1指向2，通过判断是否有环，则可以判断是否存在死锁。如果存在了环，则选择一个Victim事务，进行Abort。</p>
+<ul>
+<li>这里有个Trade off，就是多久进行一次判断，如果一直判断，则浪费资源，如果间隔太长，则事务可能等太久。</li>
+<li>Victim的选择：基于时间戳，基于持有多少锁，基于执行了多少Sql语句，基于Abort次数等</li>
+<li>回滚长度：完全回滚，部分回滚。</li>
+</ul>
+<p>死锁预防：wait-die 和 wound-wait（名称前面的是老的事务的行为）。为什么这个策略会预防死锁，因为只存在一个方向，要么老的等新的，要么新的等老的，不会有两个都在等。为了防止饥饿，重启的事务时间戳仍然是上次的那个时间戳。</p>
+<ul>
+<li>wait-die：如果年轻的持有，则老的等待；如果老的持有，则年轻的自杀；</li>
+<li>wound-wait：如果年轻的持有，则老的直接抢占；如果老的持有，则年轻的等待；</li>
+</ul>
+<h4 id="粒度问题（如果一个事务要更新10万行，那他要拿10万把锁吗？）"><a href="#粒度问题（如果一个事务要更新10万行，那他要拿10万把锁吗？）" class="headerlink" title="粒度问题（如果一个事务要更新10万行，那他要拿10万把锁吗？）"></a>粒度问题（如果一个事务要更新10万行，那他要拿10万把锁吗？）</h4><p>如果想要访问十万个Tuple，如果加十万个Tuple锁，加锁解锁的开销就很大。所以可以设置不同的粒度，可以是Page锁，或者是Table锁等。这里有个Trade off就是粒度和并发性能的问题？小粒度，能够提高并发性能，但可能加锁解锁开销大；大粒度，加锁解锁开销小，但并发性能可能会不足。</p>
+<p>另外，比如我想要加一个Table锁，那么我就需要检测每一个Tuple是否加锁，如果Tuple很多，则这个开销也是不可忽略的，因此引入了<strong>意向锁</strong>。意向锁是什么意思呢？就是比如我在加一个Tuple锁，我就先给我的Page或者是Table加一个意向锁，如果最终获得了Tuple的锁，则这个意向锁就表示内部已经有被锁住的Tuple了，但这个并非真正意义上的加锁，只是个标记。</p>
+<ul>
+<li>IS：Table内部某些Tuple加了Share锁</li>
+<li>IX：Table内部某些Tuple加了Exclusive锁</li>
+<li>SIX：Table内部某些Tuple加了Exclusive锁，整个Table加了S锁（比如带了某个谓词去修改某些揭露）</li>
+</ul>
+<img src="/2022/12/01/cmu15445-course_note/intention_lock.png" width="40%">
+
+<p>同时，为了防止有了太多锁，则数据库可以选择把你细粒度的锁升级为粗粒度的锁。</p>
+<h3 id="基于时间戳顺序——Timestamp-Ordering-乐观"><a href="#基于时间戳顺序——Timestamp-Ordering-乐观" class="headerlink" title="基于时间戳顺序——Timestamp Ordering(乐观)"></a>基于时间戳顺序——Timestamp Ordering(乐观)</h3><p>逻辑：悲观的协议影响性能 -&gt; 乐观的时间戳 -&gt; 优化冲突问题 -&gt; OCC</p>
+<p>时间戳必须是单调递增的。</p>
+<p>时间戳三种定义的方式：</p>
+<ul>
+<li>系统时间（物理时钟）：会有跳变。我们电脑的时间通常每隔一段时间会和服务器通信进行校准，如果系统时间比真实时间快，某次校准前给事务分配了一个时间戳，校准后给一个事务分配时间戳，这个时间戳则比之前的更小了，不符合逻辑。</li>
+<li>逻辑计数：单机一般没问题，分布式下会有延时问题。给这个节点分配一个事务，同时给另一个节点分配一个事务，这两个事务的时间戳可能是相等的。</li>
+<li>Hybrid：以上两种结合。</li>
+</ul>
+<h4 id="Basic-T-x2F-O"><a href="#Basic-T-x2F-O" class="headerlink" title="Basic T&#x2F;O"></a>Basic T&#x2F;O</h4><p>原则是让时间戳小的事务先发生，大的后发生，大体的思想就是一个事务不允许操作未来的数据。</p>
+<p>给每份数据分配两个时间戳：读时间戳RT和写时间戳WT；给每个事务分配一个事务时间戳T。</p>
+<ul>
+<li><p>读数据时，若WT&gt;T，则Abort；否则，读并更新读时间戳RT&#x3D;max(RT,T)；拷贝数据到本地（保证可重复读）。</p>
+</li>
+<li><p>写数据时，若WT&gt;T||RT&gt;T，则Abort； 否则写，并更新写时间戳WT&#x3D;T；拷贝数据到本地。</p>
+</li>
+<li><p>优化：托马斯写规则：如果RT&gt;T，则Abort掉，因为这表面未来的事务有读这个数据；如果仅仅只有WT&gt;T，则只在本地写，继续执行。</p>
+</li>
+</ul>
+<p>如下的例子：如果不采用托马斯写规则，事务1在写A时是不允许的。但本质上事务2的时间戳更大，我们最终的目标是想让事务2在事务1之后发生，所以事务1的写A操作，我们可以假装写过了，然后继续执行，这样最终A的结果是事务2的结果，<strong>看起来像是事务1的写结果被未来的事务2写覆盖了</strong>，是符合要求的。</p>
+<img src="/2022/12/01/cmu15445-course_note/T-O.png" width="25%">
+
+<p>缺点：</p>
+<ul>
+<li><p>长事务容易饥饿，因为长的事务每次执行到后期，就用到了短事务修改过的未来的数据，就一直Abort</p>
+</li>
+<li><p>数据库会出现unrecoverable的问题，如下，事务T2用到了已经Abort的事务T1，并且它自己被提交了</p>
+</li>
+<li><p>性能问题：每次都要本地拷贝，如果扫描一个表</p>
+</li>
+</ul>
+<p>所以一般用于冲突少，事务短的场景。</p>
+<img src="/2022/12/01/cmu15445-course_note/T-O-unrecoverable.png" width="50%">
+
+
+
+<h4 id="OCC"><a href="#OCC" class="headerlink" title="OCC"></a>OCC</h4><p>大体思想，是先在本地记录所有的写，然后在commit之前进行校验，如果没有冲突，则一次性写入数据库。</p>
+<ul>
+<li>Read Phase<ul>
+<li>记录所有的读写记录在本地，记录读记录是为了保证可重复读。</li>
+</ul>
+</li>
+<li>Validation Phase<ul>
+<li>分配一个时间戳</li>
+<li>校验最根本的是要保证冲突是单向的，比如older wait younger；校验有两种：backward validation和forward validation（三种情况）</li>
+</ul>
+</li>
+<li>Write Phase<ul>
+<li>锁住，全部写入</li>
+</ul>
+</li>
+</ul>
+<p>一般用于写事务少，冲突少（可以用数据库数据是否倾斜来简单衡量），事务短的场景。</p>
+<p>缺点：</p>
+<ul>
+<li>拷贝带来的性能</li>
+<li>检验和写步骤容易成为瓶颈</li>
+<li>如果校验失败了，代价更大，因为都读写好了</li>
+</ul>
+<h3 id="隔离级别"><a href="#隔离级别" class="headerlink" title="隔离级别"></a>隔离级别</h3><h4 id="二阶段锁和OCC为什么都不能解决幻读？如何解决？"><a href="#二阶段锁和OCC为什么都不能解决幻读？如何解决？" class="headerlink" title="二阶段锁和OCC为什么都不能解决幻读？如何解决？"></a>二阶段锁和OCC为什么都不能解决幻读？如何解决？</h4><p>数据都没有怎么锁，数据都没有怎么检查冲突。</p>
+<p>如何解决：</p>
+<ul>
+<li>提交之前重新扫描检查一遍——性能太差</li>
+<li>谓词锁，前面Sql查询时用了这个谓词，然后和谓词相关的数据就锁住了——几乎没有系统使用，谓词可能覆盖的空间太大了</li>
+<li>索引锁，没有索引就加表锁或者页锁（其实相当于是对谓词锁的优化，没有索引的时候还是需要锁谓词）</li>
+</ul>
+<p>Mysql使用的是间隙锁，比如数据有1,3,5,7,9，Mysql把13579之间的间隙也看成数据，然后给它加锁，防止插入。另外比如一个查找了一个聚合max，Mysql就把大于max值的所有间隙锁住，防止插入。</p>
+<h4 id="隔离级别-1"><a href="#隔离级别-1" class="headerlink" title="隔离级别"></a>隔离级别</h4><p>隔离级别的提出——能够忍受一些冲突问题，牺牲正确性来提高并发性能。</p>
+<p>三个问题：脏读，不可重复读，幻读。</p>
+<img src="/2022/12/01/cmu15445-course_note/isolation_level.png" width="40%">
+
+<p>如何实现：</p>
+<ul>
+<li><p>SERIALIZABLE：要X锁和S锁，按照S2PL协议使用，还需要对Index加锁吗，防止幻读。</p>
+</li>
+<li><p>REPEATABLE READ：需要X锁和S锁，按照S2PL协议使用，即等待事务结束后才释放。</p>
+</li>
+<li><p>READ COMMITTED：不按照S2PL协议，S锁用完就释放，这时候数据可能被其他事务修改，发生不可重复读。</p>
+</li>
+<li><p>READ UNCOMMITTED：不需要使用S锁，这样就不会和写锁冲突，直接拿到脏的数据;</p>
+</li>
+</ul>
+<h3 id="MVCC"><a href="#MVCC" class="headerlink" title="MVCC"></a>MVCC</h3><p>一个数据维护多份版本，比如说一个事务修改了一份数据，另一个事务可以读历史版本，或者说一个事务正在读一个数据，另一个事务则可以增加一个新的版本，这样就<strong>减少了冲突的影响</strong>。也可以<strong>使数据库具备读历史版本的功能</strong>。</p>
+<p>下面是一个具体例子，实现的关键是<strong>维护了版本信息</strong>以及<strong>事务的活跃信息</strong>，下面的隔离级别是SnapShot（介于Reapeatable Read和Serializable之间），单独的MVCC是做不到Serializable的（想要做到要结合其他协议），比如下面T2对A的更新是以A0为基础更新的，如果是Serializable的，符合T2在T1之后发生，T2应该是以A1为基础进行更新。</p>
+<p><img src="/2022/12/01/cmu15445-course_note/mvcc-example1.png" width="50%"><img src="/2022/12/01/cmu15445-course_note/mvcc-example2.png" width="50%"></p>
+<p>可以把对于MVCC的讨论分为四个大块：</p>
+<ul>
+<li><p>选择一种并发协议，比如2PL，T&#x2F;O或者OCC</p>
+</li>
+<li><p>如何存版本</p>
+<ul>
+<li><p>直接在原表中追加，维护一个指针</p>
+<img src="/2022/12/01/cmu15445-course_note/mvcc-storage1.png" width="20%">
+</li>
+<li><p>单开一个表存历史数据，每次修改，就把旧值存到这个表中，同样是靠指针维护</p>
+<img src="/2022/12/01/cmu15445-course_note/mvcc-storage2.png" width="45%">
+</li>
+<li><p>单开一个表存，但是存的是delta，因为每一行有多个列，只修改一列就存一行浪费空间，是恢复的代价和空间的Trade off</p>
+<img src="/2022/12/01/cmu15445-course_note/mvcc-storage3.png" width="45%"></li>
+</ul>
+</li>
+<li><p>如何GC：不能无限存历史版本，回收哪些？所以活跃事务都看不到的版本、以及回滚的事务创建的版本。</p>
+<ul>
+<li>事务级别：每次一个事务提交后，GC它自己用不到的版本。</li>
+<li>Tuple级别：开一个后台线程，去扫描；或者是一个线程在工作时，扫描的时候顺便进行GC。</li>
+</ul>
+</li>
+<li><p>索引管理：索引一般分为主索引和辅助索引</p>
+<ul>
+<li>辅助索引叶子节点如果存的是物理地址，那么每次插入一个新的版本，除了修改主索引的内容，还有修改所有辅助索引的内容（postgres）。</li>
+<li>辅助索引如果存的是逻辑地址（Record Id），则需要通过回表的形式进行查询，这样每次插入一个新的版本，只需要修改主索引的内容（Mysql）。</li>
+</ul>
+<p><img src="/2022/12/01/cmu15445-course_note/mvcc-index1.png" width="50%"><img src="/2022/12/01/cmu15445-course_note/mvcc-index2.png" width="50%"></p>
+</li>
+</ul>
+<hr>
+<h2 id="lecture19-20-数据库恢复"><a href="#lecture19-20-数据库恢复" class="headerlink" title="lecture19,20 数据库恢复"></a>lecture19,20 数据库恢复</h2><h3 id="原则和策略"><a href="#原则和策略" class="headerlink" title="原则和策略"></a>原则和策略</h3><p>主要分为两块：一个是当数据库正常运行时，我们需要采取一定的行动，保证之后可以恢复。第二个就是如何正确地恢复保证ACID。</p>
+<p>Undo和Redo：为了保证数据库的状态正常，我们需要保证commit过的事务一定完整提交了，Abort过的事务一定完整回滚了。因此引入了Undo和Redo，Undo用于回滚完整撤销，Redo用于重放保证完整提交。</p>
+<p>Steal和No-Steal：刷页的时候，能否将还未提交的脏页刷进去。</p>
+<p>Force和No-Force：事务commit时，是否立即需要把脏页刷进去 。</p>
+<h3 id="Shadow-Page"><a href="#Shadow-Page" class="headerlink" title="Shadow Page"></a>Shadow Page</h3><p>如果是<strong>No-Steal+Force</strong>，就代表未提交的脏页不会被刷进磁盘，已提交的脏页一定会被刷入磁盘，这样就自然保证了数据库的正确状态，<strong>不需要Undo日志和Redo日志</strong>，但是在性能上有致命的缺点：因为未提交的不能被刷进磁盘，所以未提交的数据一定得存到内存里，但是内存的大小是有限的，<strong>因此修改的量会收到内存大小的限制</strong>。据此，引入了Shadow Page的方法。</p>
+<p>因为不能在内存上改，所以我直接在磁盘上开一个Page副本进行修改，当事务commit时，我就把磁盘中备份的数据当作正版数据，并把旧的删除。具体怎么实现？在内存中在会维护一个Shadow Page Table，Master Page Table和一个根节点，根节点指向哪个Table，哪个Table就是正版数据，然后在commit时修改根节点指针即可。</p>
+<p>如何Undo：删除Shadow Page和Shadow Page Table。如何Redo：不需要做任何操作，只要commit过就是完整的commit。</p>
+<p>缺点：性能极差。commit时的工作太多（GC，等待刷盘）。磁盘容易碎片化。随机读写变多了。</p>
+<img src="/2022/12/01/cmu15445-course_note/recovery-shadow_page.png" width="50%">
+
+
+
+<h3 id="WAL"><a href="#WAL" class="headerlink" title="WAL"></a>WAL</h3><h4 id="WAL的思想"><a href="#WAL的思想" class="headerlink" title="WAL的思想"></a>WAL的思想</h4><p>由于Shadow Page缺点太多，所以没什么人用。更好的做法是WAL，事务的所有操作会记录一个日志文件，当保证了<strong>日志文件先于Page的落地</strong>，就可以：</p>
+<ul>
+<li>实现<strong>Steal</strong>策略，即把还未提交事务的修改刷进磁盘，即使DB崩了，我们也可以通过Log进行Undo；</li>
+<li>实现<strong>No-Force</strong>策略，事务commit时不一定要立马进行刷脏页（但需要把Log立即刷盘），因为只要Log落地了，即使DB崩了，则可以通过LOG进行Redo。当然这里基于一个假设，Log是能够完整地存下来的，这样才能保证完整的Redo。如果一个事务commit了但Log没有被完整地存下来，那么就只能Undo掉这个事务了，这样会丢失部分信息，但因为Log的量比较小，存起来是很快的，所以这是极少发生的，并且为了保证数据的一致性，这也是可以接受的。</li>
+</ul>
+<p>这样只要日志完整地落盘，就意味着事务是安全的了，就可以提前通知用户了。</p>
+<p>优化：每一个事务提交时Log都要刷盘，可以成组提交，代价是一个事务迟迟得不到commit成功的消息，因此还需要设置个超时时间。</p>
+<p>WAL的缺点：恢复时比较缓慢，但是DB崩溃情况一般是少数，所以可以接受。</p>
+<h4 id="WAL-Log中内容是什么"><a href="#WAL-Log中内容是什么" class="headerlink" title="WAL Log中内容是什么"></a>WAL Log中内容是什么</h4><p>宏观上来说需要记录以下信息：</p>
+<ul>
+<li>Transaction ID</li>
+<li>Object ID</li>
+<li>Before Value(Undo)</li>
+<li>After Value(Redo)</li>
+</ul>
+<p>Mysql是Undo和Redo分开记录，目的是将Undo日志和MVCC结合起来，查旧版本时也可以利用Undo日志。</p>
+<p>具体则有3种策略：</p>
+<ul>
+<li>Physical Log：具体Page的二进制级别的信息。缺点：日志量会超级大。优点：更细致，容易恢复，不容易出错。</li>
+<li>Logical Log：记录Sql语句。缺点：恢复缓慢。恢复的执行结果可能不一致（比如用now或者limit关键字，或者并发时顺序不一致）。优点：日志量小。</li>
+<li>二者结合。</li>
+</ul>
+<h4 id="CheckPoint"><a href="#CheckPoint" class="headerlink" title="CheckPoint"></a>CheckPoint</h4><p>解决日志量的无限增长。解决恢复重头恢复的问题。</p>
+<p>DB会周期性打CheckPoint利用CheckPoint恢复数据库时，需要注意</p>
+<ul>
+<li><p>CheckPoint处之前已经Commit的事务是一定已经落盘了的，这些日志是可以回收的。</p>
+</li>
+<li><p>CheckPont之后，Crash之前的未提交事务，需要Undo。</p>
+</li>
+<li><p>CheckPoint之后，Crash之前的已提交事务，需要Redo。</p>
+</li>
+</ul>
+<p>如下，T2需要Redo，T3需要Undo。</p>
+<img src="/2022/12/01/cmu15445-course_note/checkpoint.png" width="20%">
+
+<p>Trade Off：多久打一次CheckPoint，是数据库使用性能和恢复时长（日志量）的Trade Off。</p>
+<h3 id="Aries算法"><a href="#Aries算法" class="headerlink" title="Aries算法"></a>Aries算法</h3><p>前面已经简单介绍，一个数据库想要做到在crash时要恢复，需要关注两个问题：</p>
+<ul>
+<li>一个是数据库在正常运行时，需要做一些额外操作记录一些信息供恢复使用</li>
+<li>另一个是如何利用额外信息来进行恢复（Aries）</li>
+</ul>
+<p>本节对于数据库恢复算法Aries的讨论，也主要从这两个点来进行。首先Aries必须搭配WAL，因此提前针对WAL补充了更多的使用细节。</p>
+<ul>
+<li><p>额外操作记录哪些信息：</p>
+<p>首先，引入了LSN，表示日志号，方便我们后面跟踪各种类型的标记来做判断。比如说，内存中有个FlushLSN表示哪些LOG已经刷进磁盘了，内存中的每个页有个PageLSN表示对该Page最新修改的LSN号，当要把内存中的页刷进磁盘时，就一定得保证PageLSN&lt;&#x3D;FlushLSN，这就是保证在页刷进磁盘前必须保证LOG已经落盘了，符合WAL的思想。</p>
+<p>正常运行时事务分为正常Commit和正常Abort，下面对这两种情况做的操作分开讨论：</p>
+<ul>
+<li><p>正常Commit：当事务提交时，进行刷LOG进磁盘并更新FlushLSN，这个过程是一口气刷进去，因为是顺序写，所以不会太慢。之后会在某个合适的时期把内存的Page刷入磁盘，比如说做checkPoint的时候。在所有Page都安全落盘之后，便生成一个TXN-END的LOG表示事务真正的结束，并且可以删除内存中所有FlushLSN之前的LOG。</p>
+</li>
+<li><p>正常Abort：每一条日志还需要加一个PreLSN，表示这个事务的上一条LOG是什么，因为在事务并发的时候同一个事务的日志并非是连续的。当事务Abort时，就根据AbortLOG的上一条LOG进行逐步操作进行回滚，除了回滚之外，我们还需要记录下CLR日志，CLR的日志目的是为了表示对这个事务的回滚我已经做了哪些，防止在回滚的时候发生了Crash，CLR中日志还需要记录Undo Next LSN，表示下一条Undo日志的LSN，所有记录回滚后，就可以插入一个TXN-END。同时CLR日志是不需要被回滚的。</p>
+<img src="/2022/12/01/cmu15445-course_note/Aries-CLR.png" width="50%"></li>
+</ul>
+<p>No Fuzzy CheckPoint的缺点：暂停数据库的服务，等待所有旧的事务完成并刷盘——代价太大。</p>
+<p>简单的优化——暂停一个时间点，将内存中所有页锁住（已经被锁的就不管，然后记录到DPT），然后将它们进行刷盘。这样就不一定要完全等待所有正在进行的事务完成。CheckPoint的结果就是上一节的那个图，如下左图。上一节说了，在CheckPoint之后Crash之前Commit的事务需要Redo，在CheckPoint之后，Crash之前尚未Commit的事务需要Undo，这个信息怎么由来呢？因此就在CheckPoint时，记录了额外信息，ATT（Active Transaction Table）和DPT（Dirty Page Table），方便后期恢复时使用。下面介绍ATT和DPT记录了什么信息。</p>
+<ul>
+<li>ATT：记录了Active Transaction ID，Transaction Status以及LastLSN</li>
+<li>DPT：记录了Buffer中还要哪些Dirty Page（试图加锁但已经被锁的页，也表示还未刷进磁盘的页）；同时Buffer Pool中每个Page还要记录recLSN表示第一个让这个Page变脏的日志LSN。</li>
+</ul>
+<p>如下图，第二个CheckPoint的ATT有T2，因为T2还没有TXN-END，还在将页刷盘，所以它是活跃的。</p>
+<p><img src="/2022/12/01/cmu15445-course_note/checkpoint.png" width="20%"> <img src="/2022/12/01/cmu15445-course_note/Aries-Checkpoint1.png" width="18%"></p>
+<p>这种方式虽然不需要等待所有事务完成，但是锁Buffer Pool的方式还是需要事务暂停，还是不够完美，最根本的原因是想让CheckPoint做成一个确切的点。因此引入了Fuzzy(模糊的) CheckPoint，把CheckPoint变成一个区间，在做CheckPoint时事务可以正常运行。对于Fuzzy CheckPoint，首先会打一个CheckPoint-Begin，随后开始统计，只统计Begin之前的事务，生成出ATT 和 DPT，最后写入CheckPoint-End。</p>
+<img src="/2022/12/01/cmu15445-course_note/Aries-Checkpoint2.png" width="18%">
+</li>
+<li><p>如何进行数据库恢复——Aries</p>
+<p>通过 MasterRecord （磁盘中记录最后一个CheckPoint位置的标记）找到最后一个 BEGIN-CHECKPOINT 记录，然后分别进行 3 个阶段：</p>
+<ul>
+<li><p>分析：找到最后一个 Checkpoint-Begin 之后哪些事务提交或中止了</p>
+<ul>
+<li>如果遇到CheckPoint-End，则把它的ATT和DPT加入到分析的ATT和DPT（因为Analysis阶段只扫描了CheckPoint-Begin之后的日志，它的目的是为了恢复Crash瞬间的ATT和DPT）</li>
+<li>如果发现 TXN-END 记录，则从 ATT 中移除该事务</li>
+<li>遇到其它日志记录时，将事务放入 ATT 中，将 status 设置为 UNDO，如果事务提交，将其状态修改为 COMMIT</li>
+<li>如果是数据更新记录，按需更新 DPT 以及 recLSN</li>
+</ul>
+</li>
+<li><p>重做：找到 DPT 中最小的 recLSN，从那里开始重做所有操作。目的是将数据库还原到Crash瞬间的状态。</p>
+<ul>
+<li>重放时：会跳过两类LOG，一个是LOG的Page不在DTT里，表示已经刷盘了。一个是LOG的Page在DDT里，但是小于Page的recLSN，也表示刷盘了。主要是防止Redo时崩了。</li>
+<li><strong>为什么是从这个位置开始重放？</strong>因为，recLSN的含义是第一个让这个Page变脏的日志LSN，CheckPoint时的DPT表示在CheckPoint时这个页是脏的，也就表明这个页上从recLSN开始的所有修改都还未落盘，也可以理解为还没真正被执行，最小的recLSN之前的肯定都落盘了，也就是说<strong>磁盘中的数据状态就是这个点的数据状态</strong>，之后从这里开始执行的时候，从磁盘中读数据什么的也就是正确的，不会缺操作也不会重复操作。还需要注意的是这个过程包含了将已经Commit的事务的完整Redo，也包含了一些Crash时未Commit的事务的历史操作。</li>
+<li>具体实施：重放时不需要再记录日志。不需要强制刷盘（大不了崩了再来）。Redo时会修改页的相关LSN，记录是否刷盘。</li>
+</ul>
+</li>
+<li><p>撤销：开始往回回滚所有未Commit的事务操作。每条回滚都要写CLR。</p>
+<img src="/2022/12/01/cmu15445-course_note/Aries-Content.png"></li>
+</ul>
+<p>若干问题：</p>
+<p>如果Analyse阶段崩了，有问题吗？没有，因为还没开始操作？</p>
+<p>如果Redo阶段崩了，有问题吗？没有，并不会重复Redo，因为Redo会跳过已经执行过的操作。</p>
+<p>提高Undo性能：LazyRollBack策略，对应页访问时才Undo。</p>
+</li>
+</ul>
+
+    </div>
+
+    
+    
+    
+        
+
+<div>
+<ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>Post author:  </strong>llf333
+  </li>
+  <li class="post-copyright-link">
+    <strong>Post link: </strong>
+    <a href="http://llf333.github.io/2022/12/01/cmu15445-course_note/" title="自底向上构建数据库——CMU15-445总结">http://llf333.github.io/2022/12/01/cmu15445-course_note/</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>Copyright Notice:  </strong>All articles in this blog are licensed under <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="noopener" target="_blank"><i class="fab fa-fw fa-creative-commons"></i>BY-NC-SA</a> unless stating additionally. Please give credit to the original author when you use it elsewhere.
+</ul>
+</div>
+
+
+      <footer class="post-footer">
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2022/11/07/2ndReadRaft/" rel="prev" title="Raft博士论文阅读">
+      <i class="fa fa-chevron-left"></i> Raft博士论文阅读
+    </a></div>
+      <div class="post-nav-item"></div>
+    </div>
+      </footer>
+    
+  </article>
+
+
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#lecture1-%E5%9F%BA%E6%9C%AC%E4%BB%8B%E7%BB%8D"><span class="nav-number">1.</span> <span class="nav-text">lecture1 基本介绍</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%B8%BA%E4%BB%80%E4%B9%88%E6%88%91%E4%BB%AC%E9%9C%80%E8%A6%81%E6%95%B0%E6%8D%AE%E5%BA%93%EF%BC%9F-x2F-%E6%95%B0%E6%8D%AE%E5%BA%93%E7%9A%84%E5%8A%9F%E8%83%BD%E6%9C%89%E5%93%AA%E4%BA%9B%EF%BC%9F"><span class="nav-number">1.1.</span> <span class="nav-text">为什么我们需要数据库？&#x2F; 数据库的功能有哪些？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#DataModel"><span class="nav-number">1.2.</span> <span class="nav-text">DataModel</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#lecture34-%E5%AD%98%E5%82%A8"><span class="nav-number">2.</span> <span class="nav-text">lecture34 存储</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%95%B0%E6%8D%AE%E7%BB%84%E7%BB%87%E5%BD%A2%E5%BC%8F"><span class="nav-number">2.1.</span> <span class="nav-text">数据组织形式</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%AE%A1%E7%AE%97%E6%9C%BA%E6%97%B6%E6%97%A0%E6%B3%95%E7%B2%BE%E7%A1%AE%E8%A1%A8%E7%A4%BA%E6%95%B0%E5%AD%97%EF%BC%8C%E6%80%8E%E4%B9%88%E5%8A%9E%EF%BC%9F"><span class="nav-number">2.2.</span> <span class="nav-text">计算机时无法精确表示数字，怎么办？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%AD%98%E5%82%A8%E6%A8%A1%E5%9E%8B"><span class="nav-number">2.3.</span> <span class="nav-text">存储模型</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#lecture5-%E7%BC%93%E5%86%B2%E6%B1%A0"><span class="nav-number">3.</span> <span class="nav-text">lecture5 缓冲池</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#Buffer-Pool-Or-MMAP%EF%BC%9F"><span class="nav-number">3.1.</span> <span class="nav-text">Buffer Pool Or MMAP？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%B8%BA%E4%BB%80%E4%B9%88%E9%9C%80%E8%A6%81Buffer-Pool%EF%BC%9F"><span class="nav-number">3.2.</span> <span class="nav-text">为什么需要Buffer Pool？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Buffer-Pool%E7%9A%84%E7%BB%84%E6%88%90"><span class="nav-number">3.3.</span> <span class="nav-text">Buffer Pool的组成</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#PAGE-DIRECTORY-%E5%92%8C-PAGE-TABLE%E7%9A%84%E5%8C%BA%E5%88%AB%EF%BC%9F"><span class="nav-number">3.4.</span> <span class="nav-text">PAGE DIRECTORY 和 PAGE TABLE的区别？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Latch-%E5%92%8C-Lock%E7%9A%84%E5%8C%BA%E5%88%AB%EF%BC%9F"><span class="nav-number">3.5.</span> <span class="nav-text">Latch 和 Lock的区别？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%BC%98%E5%8C%96%EF%BC%9A"><span class="nav-number">3.6.</span> <span class="nav-text">优化：</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Polocies"><span class="nav-number">3.7.</span> <span class="nav-text">Polocies</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%95%B0%E6%8D%AE%E5%BA%93%E9%99%A4%E4%BA%86TUPLE%E7%9A%84Buffer-Pool-%E8%BF%98%E6%9C%89%E4%BB%80%E4%B9%88Memory-Pool%EF%BC%9F"><span class="nav-number">3.8.</span> <span class="nav-text">数据库除了TUPLE的Buffer Pool 还有什么Memory Pool？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Buffer-Pool%E5%92%8COS%E7%9A%84%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%98%E6%9C%89%E4%BB%80%E4%B9%88%E5%8C%BA%E5%88%AB%EF%BC%9F"><span class="nav-number">3.9.</span> <span class="nav-text">Buffer Pool和OS的虚拟内存有什么区别？</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#lecture678-%E5%93%88%E5%B8%8C%E8%A1%A8%E5%92%8C%E6%A0%91"><span class="nav-number">4.</span> <span class="nav-text">lecture678 哈希表和树</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#Hash%E8%A1%A8%E4%B8%BB%E8%A6%81%E5%85%B3%E6%B3%A8%E4%BB%80%E4%B9%88%EF%BC%9F"><span class="nav-number">4.1.</span> <span class="nav-text">Hash表主要关注什么？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E9%9D%99%E6%80%81Hash%E7%AE%97%E6%B3%95%E6%9C%89%E5%93%AA%E4%BA%9B%EF%BC%8C%E5%8A%A8%E6%80%81Hash%E6%9C%89%E5%93%AA%E4%BA%9B-%E5%8C%BA%E5%88%AB%E6%98%AF%E4%BB%80%E4%B9%88%EF%BC%9F"><span class="nav-number">4.2.</span> <span class="nav-text">静态Hash算法有哪些，动态Hash有哪些, 区别是什么？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%93%88%E5%B8%8C%E8%A1%A8%E4%B8%80%E8%88%AC%E4%B8%8D%E7%94%A8%E4%BD%9C%E7%B4%A2%E5%BC%95%E7%9A%84%E5%8E%9F%E5%9B%A0%EF%BC%9F"><span class="nav-number">4.3.</span> <span class="nav-text">哈希表一般不用作索引的原因？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#B-%E6%A0%91%E7%9A%84%E6%80%A7%E8%B4%A8"><span class="nav-number">4.4.</span> <span class="nav-text">B+树的性质</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#B%E6%A0%91%E5%92%8CB-%E6%A0%91%E7%9A%84%E5%8C%BA%E5%88%AB"><span class="nav-number">4.5.</span> <span class="nav-text">B树和B+树的区别</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%A6%82%E6%9E%9C%E6%9C%89%E9%87%8D%E5%A4%8D%E7%9A%84key%E6%80%8E%E4%B9%88%E5%AD%98%EF%BC%9F"><span class="nav-number">4.6.</span> <span class="nav-text">如果有重复的key怎么存？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Node-Size%E7%9A%84%E5%8F%96%E8%88%8D"><span class="nav-number">4.7.</span> <span class="nav-text">Node Size的取舍</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#B-%E6%A0%91%E4%BC%98%E5%8C%96"><span class="nav-number">4.8.</span> <span class="nav-text">B+树优化</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%AF%B7%E8%AF%B4%E8%AF%B4%E4%BB%80%E4%B9%88%E6%98%AF%E9%9A%90%E5%BC%8F%E7%B4%A2%E5%BC%95%EF%BC%8C%E5%B1%80%E9%83%A8%E7%B4%A2%E5%BC%95%EF%BC%8C%E8%A6%86%E7%9B%96%E7%B4%A2%E5%BC%95%EF%BC%8C%E5%8C%85%E5%90%AB%E7%B4%A2%E5%BC%95-index-include-column-%EF%BC%9F"><span class="nav-number">4.9.</span> <span class="nav-text">请说说什么是隐式索引，局部索引，覆盖索引，包含索引(index include column)？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Spin-Lock-x2F-Latch"><span class="nav-number">4.10.</span> <span class="nav-text">Spin Lock&#x2F;Latch</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Latch-Crabbing"><span class="nav-number">4.11.</span> <span class="nav-text">Latch Crabbing</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#lecture9-10-%E6%8E%92%E5%BA%8F%EF%BC%88Sort%EF%BC%89%E3%80%81%E8%81%9A%E5%90%88%EF%BC%88Aggregations%EF%BC%89%E5%92%8C%E8%BF%9E%E6%8E%A5%EF%BC%88Join%EF%BC%89"><span class="nav-number">5.</span> <span class="nav-text">lecture9,10 排序（Sort）、聚合（Aggregations）和连接（Join）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%A4%96%E9%83%A8%E5%BD%92%E5%B9%B6%E6%8E%92%E5%BA%8F"><span class="nav-number">5.1.</span> <span class="nav-text">外部归并排序</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%81%9A%E5%90%88"><span class="nav-number">5.2.</span> <span class="nav-text">聚合</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%BF%9E%E6%8E%A5"><span class="nav-number">5.3.</span> <span class="nav-text">连接</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#lecture-11-12-13-14-%E6%9F%A5%E8%AF%A2%E6%89%A7%E8%A1%8C%E5%92%8C%E6%9F%A5%E8%AF%A2%E4%BC%98%E5%8C%96"><span class="nav-number">6.</span> <span class="nav-text">lecture 11,12,13,14 查询执行和查询优化</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%B8%80%E4%B8%AASQL%E8%AF%AD%E5%8F%A5%E6%98%AF%E6%80%8E%E4%B9%88%E6%A0%B7%E6%89%A7%E8%A1%8C%E7%9A%84"><span class="nav-number">6.1.</span> <span class="nav-text">一个SQL语句是怎么样执行的</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E9%80%BB%E8%BE%91%E8%AE%A1%E5%88%92%E5%92%8C%E7%89%A9%E7%90%86%E8%AE%A1%E5%88%92%E7%9A%84%E5%8C%BA%E5%88%AB%E6%98%AF%EF%BC%9F"><span class="nav-number">6.2.</span> <span class="nav-text">逻辑计划和物理计划的区别是？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%B8%80%E4%B8%AA%E7%89%A9%E7%90%86%E6%89%A7%E8%A1%8C%E8%AE%A1%E5%88%92%E6%80%8E%E4%B9%88%E6%A0%B7%E8%BF%90%E8%A1%8C%E7%9A%84%EF%BC%9F"><span class="nav-number">6.3.</span> <span class="nav-text">一个物理执行计划怎么样运行的？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Operator%E7%9A%84%E6%95%B0%E6%8D%AE%E8%AE%BF%E9%97%AE%E6%96%B9%E5%BC%8F%E5%92%8C%E8%B0%93%E8%AF%8D%E7%AD%9B%E9%80%89"><span class="nav-number">6.4.</span> <span class="nav-text">Operator的数据访问方式和谓词筛选</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%B9%B6%E5%8F%91"><span class="nav-number">6.5.</span> <span class="nav-text">并发</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#Query"><span class="nav-number">6.5.1.</span> <span class="nav-text">Query</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#IO"><span class="nav-number">6.5.2.</span> <span class="nav-text">IO</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E9%80%BB%E8%BE%91%E8%AE%A1%E5%88%92%E7%9A%84%E4%BC%98%E5%8C%96"><span class="nav-number">6.6.</span> <span class="nav-text">逻辑计划的优化</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%89%A9%E7%90%86%E8%AE%A1%E5%88%92%E7%9A%84%E4%BC%98%E5%8C%96"><span class="nav-number">6.7.</span> <span class="nav-text">物理计划的优化</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%A6%82%E4%BD%95%E8%AE%A1%E7%AE%97%E6%88%90%E6%9C%AC%EF%BC%9F"><span class="nav-number">6.7.1.</span> <span class="nav-text">如何计算成本？</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%A6%82%E4%BD%95%E6%9E%9A%E4%B8%BE%E5%87%BA%E9%9C%80%E8%A6%81%E8%AE%A1%E7%AE%97%E7%9A%84%E8%AE%A1%E5%88%92%EF%BC%9F"><span class="nav-number">6.7.2.</span> <span class="nav-text">如何枚举出需要计算的计划？</span></a></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#lecture-15-16-17-18-%E4%BA%8B%E5%8A%A1%E5%B9%B6%E5%8F%91"><span class="nav-number">7.</span> <span class="nav-text">lecture 15,16,17,18 事务并发</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#ACID"><span class="nav-number">7.1.</span> <span class="nav-text">ACID</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Conflict-Serializable"><span class="nav-number">7.2.</span> <span class="nav-text">Conflict Serializable</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%BA%8C%E9%98%B6%E6%AE%B5%E9%94%81%E2%80%94%E2%80%94Two-Phase-Lock-%E6%82%B2%E8%A7%82"><span class="nav-number">7.3.</span> <span class="nav-text">二阶段锁——Two Phase Lock(悲观)</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E4%BA%8C%E9%98%B6%E6%AE%B5%E9%94%81"><span class="nav-number">7.3.1.</span> <span class="nav-text">二阶段锁</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E4%B8%A5%E6%A0%BC%E4%BA%8C%E9%98%B6%E6%AE%B5%E9%94%81"><span class="nav-number">7.3.2.</span> <span class="nav-text">严格二阶段锁</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%AD%BB%E9%94%81%E6%A3%80%E6%B5%8B%E5%92%8C%E6%AD%BB%E9%94%81%E9%A2%84%E9%98%B2"><span class="nav-number">7.3.3.</span> <span class="nav-text">死锁检测和死锁预防</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E7%B2%92%E5%BA%A6%E9%97%AE%E9%A2%98%EF%BC%88%E5%A6%82%E6%9E%9C%E4%B8%80%E4%B8%AA%E4%BA%8B%E5%8A%A1%E8%A6%81%E6%9B%B4%E6%96%B010%E4%B8%87%E8%A1%8C%EF%BC%8C%E9%82%A3%E4%BB%96%E8%A6%81%E6%8B%BF10%E4%B8%87%E6%8A%8A%E9%94%81%E5%90%97%EF%BC%9F%EF%BC%89"><span class="nav-number">7.3.4.</span> <span class="nav-text">粒度问题（如果一个事务要更新10万行，那他要拿10万把锁吗？）</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%9F%BA%E4%BA%8E%E6%97%B6%E9%97%B4%E6%88%B3%E9%A1%BA%E5%BA%8F%E2%80%94%E2%80%94Timestamp-Ordering-%E4%B9%90%E8%A7%82"><span class="nav-number">7.4.</span> <span class="nav-text">基于时间戳顺序——Timestamp Ordering(乐观)</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#Basic-T-x2F-O"><span class="nav-number">7.4.1.</span> <span class="nav-text">Basic T&#x2F;O</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#OCC"><span class="nav-number">7.4.2.</span> <span class="nav-text">OCC</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E9%9A%94%E7%A6%BB%E7%BA%A7%E5%88%AB"><span class="nav-number">7.5.</span> <span class="nav-text">隔离级别</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E4%BA%8C%E9%98%B6%E6%AE%B5%E9%94%81%E5%92%8COCC%E4%B8%BA%E4%BB%80%E4%B9%88%E9%83%BD%E4%B8%8D%E8%83%BD%E8%A7%A3%E5%86%B3%E5%B9%BB%E8%AF%BB%EF%BC%9F%E5%A6%82%E4%BD%95%E8%A7%A3%E5%86%B3%EF%BC%9F"><span class="nav-number">7.5.1.</span> <span class="nav-text">二阶段锁和OCC为什么都不能解决幻读？如何解决？</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E9%9A%94%E7%A6%BB%E7%BA%A7%E5%88%AB-1"><span class="nav-number">7.5.2.</span> <span class="nav-text">隔离级别</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#MVCC"><span class="nav-number">7.6.</span> <span class="nav-text">MVCC</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#lecture19-20-%E6%95%B0%E6%8D%AE%E5%BA%93%E6%81%A2%E5%A4%8D"><span class="nav-number">8.</span> <span class="nav-text">lecture19,20 数据库恢复</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%8E%9F%E5%88%99%E5%92%8C%E7%AD%96%E7%95%A5"><span class="nav-number">8.1.</span> <span class="nav-text">原则和策略</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Shadow-Page"><span class="nav-number">8.2.</span> <span class="nav-text">Shadow Page</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#WAL"><span class="nav-number">8.3.</span> <span class="nav-text">WAL</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#WAL%E7%9A%84%E6%80%9D%E6%83%B3"><span class="nav-number">8.3.1.</span> <span class="nav-text">WAL的思想</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#WAL-Log%E4%B8%AD%E5%86%85%E5%AE%B9%E6%98%AF%E4%BB%80%E4%B9%88"><span class="nav-number">8.3.2.</span> <span class="nav-text">WAL Log中内容是什么</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#CheckPoint"><span class="nav-number">8.3.3.</span> <span class="nav-text">CheckPoint</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Aries%E7%AE%97%E6%B3%95"><span class="nav-number">8.4.</span> <span class="nav-text">Aries算法</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="llf333"
+      src="/images/llf.jpg">
+  <p class="site-author-name" itemprop="name">llf333</p>
+  <div class="site-description" itemprop="description">Every man is the master of his own fortune.</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives">
+          <span class="site-state-item-count">17</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories">
+          
+        <span class="site-state-item-count">3</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/llf333" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;llf333" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2022</span>
+  <span class="with-love">
+    <i class="fa-light fa-watermelon-slice"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">llf333</span>
+</div>
+
+<!--
+  <div class="powered-by">Powered by <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a>
+  </div>-->
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>
